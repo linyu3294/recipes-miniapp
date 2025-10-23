@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recipes Mini App</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js"></script>
+</head>
+<body>
+    <div class="header-section">
+        <h1>Pantry</h1>
+        <button class="select-all-btn" id="select-all-btn">Select All</button>
+    </div>
+
+    <div class="search-section">
+        <select id="ingredients">
+            <option value="" disabled selected>Rice</option>
+            <option value="rice">Rice</option>
+            <option value="white-rice">White Rice</option>
+            <option value="rice-vinegar">Rice Vinegar</option>
+            <option value="butter">Butter</option>
+            <option value="tofu">Tofu</option>
+            <option value="radish">Radish</option>
+            <option value="soy-sauce">Soy Sauce</option>
+        </select>
+    </div>
+
+    <div class="suggestions-section">
+        <div class="suggestion-item">
+            <span>Rice</span>
+            <button class="add-btn">+</button>
+        </div>
+        <div class="suggestion-item">
+            <span>White Rice</span>
+            <button class="add-btn">+</button>
+        </div>
+        <div class="suggestion-item">
+            <span>Rice Vinegar</span>
+            <button class="add-btn">+</button>
+        </div>
+    </div>
+
+    <div id="selected-ingredients">
+        <div class="ingredient">
+            <span class="remove-btn"></span>
+            <h3>Butter</h3>
+        </div>
+        <div class="ingredient">
+            <span class="remove-btn"></span>
+            <h3>Tofu</h3>
+        </div>
+        <div class="ingredient">
+            <span class="remove-btn"></span>
+            <h3>Radish</h3>
+        </div>
+        <div class="ingredient wide">
+            <span class="remove-btn"></span>
+            <h3>Soy Sauce</h3>
+        </div>
+    </div>
+
+    <div class="nav-buttons">
+        <button class="nav-btn active">Pantry</button>
+        <button class="nav-btn inactive">Suggestions</button>
+    </div>
+
+</body>
+</html>
