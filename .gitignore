@@ -3,3 +3,6 @@ agents/
 miniapps-platform-context/
 recipes_db_clean.json
 recipes_db_raw.json
+recipes_parsed.json
+recipes_db_clean.json.zip
+recipes_db_clean.json.zip
