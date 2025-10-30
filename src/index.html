@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Recipes Mini App</title>
   <link rel="stylesheet" href="styles.css">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <!-- Your custom CSS (loaded after Bootstrap to override) -->
+    <link rel="stylesheet" href="styles.css">
+
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dexie/4.2.0/dexie.js"></script> 
   <script defer src="pantry-manager.js"></script>
   <script defer src="app.js"></script>
@@ -65,15 +73,84 @@
     </div>
 
 
-    <div id="suggestions-tab" class="tab-content">
-         <div class="header-section">
-            <h1>Suggestions</h1>
-            <div id="recipe-suggestions">
-                <!-- Recipe cards will be dynamically added here -->
-                <p style="text-align: center; color: #999; padding: 40px;">Select ingredients from the Pantry to see recipe suggestions</p>
+   <div id="suggestions-tab" class="tab-content">
+    <div id="recipe-suggestions" class="container-fluid px-0">
+        
+        <!-- Recipe Card 1 - Collapsed -->
+        <div class="recipe-card card mb-3">
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <!-- Left Column: Recipe Content -->
+                    <div class="col-10">
+                        <h2 class="recipe-title mb-2">Fried Chicken</h2>
+                        <p class="recipe-ingredients mb-0">
+                            Chicken pieces, buttermilk, salt, black pepper, all-purpose flour, paprika, garlic powder...
+                        </p>
+                    </div>
+                    
+                    <!-- Right Column: Action Buttons -->
+                    <div class="col-2 d-flex flex-column align-items-center justify-content-start gap-2">
+                        <button class="action-btn like-btn btn btn-link p-2" aria-label="Like recipe">
+                            <i class="bi bi-hand-thumbs-up-fill fs-4"></i>
+                        </button>
+                        <button class="action-btn hide-btn btn btn-link p-2" aria-label="Hide recipe">
+                            <i class="bi bi-eye-slash fs-4"></i>
+                        </button>
+                        <button class="action-btn dislike-btn btn btn-link p-2" aria-label="Dislike recipe">
+                            <i class="bi bi-hand-thumbs-down-fill fs-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Expand Button (centered at bottom) -->
+                <div class="text-center mt-2">
+                    <button class="expand-btn btn btn-link p-2" aria-label="Expand recipe">
+                        <i class="bi bi-chevron-down fs-4"></i>
+                    </button>
+                </div>
             </div>
-         </div>
+        </div>
+
+        <!-- Recipe Card 2 - Expanded -->
+        <div class="recipe-card card mb-3 expanded">
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <!-- Left Column: Recipe Content -->
+                    <div class="col-10">
+                        <h2 class="recipe-title mb-2">Cat Paella</h2>
+                        <p class="recipe-ingredients mb-0">
+                            Olive oil, Onion, Garlic, Red bell pepper, Green bell pepper, Tomato, Green beans, 
+                            Artichoke hearts, Zucchini, Eggplant, Mushrooms, Peas, Chickpeas, Basmati rice, 
+                            Vegetable stock, Saffron, Smoked paprika, Bay leaf, Lemon, Parsley, Thyme, 
+                            Rosemary, Black pepper, Salt
+                        </p>
+                    </div>
+                    
+                    <!-- Right Column: Action Buttons -->
+                    <div class="col-2 d-flex flex-column align-items-center justify-content-start gap-2">
+                        <button class="action-btn like-btn btn btn-link p-2 active" aria-label="Like recipe">
+                            <i class="bi bi-hand-thumbs-up-fill fs-4"></i>
+                        </button>
+                        <button class="action-btn hide-btn btn btn-link p-2" aria-label="Hide recipe">
+                            <i class="bi bi-eye-slash fs-4"></i>
+                        </button>
+                        <button class="action-btn dislike-btn btn btn-link p-2 active" aria-label="Dislike recipe">
+                            <i class="bi bi-hand-thumbs-down-fill fs-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Expand Button (centered at bottom) -->
+                <div class="text-center mt-2">
+                    <button class="expand-btn btn btn-link p-2" aria-label="Collapse recipe">
+                        <i class="bi bi-chevron-up fs-4"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </div>
+</div>
    
 
     <div class="nav-buttons">
