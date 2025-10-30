@@ -17,10 +17,10 @@ class RecipesMiniApp {
     this.ingredients = [];
     this.recipes = [];
     this.staticSubstitutions = [];
-    this.pantry = [];
     this.preferences = [];
     this.contextHistory = [];
     this.likeDislike = [];
+    this.pantryManager = new PantryManager();
   }
   
   // Load recipes into IndexedDB (one-time operation)
@@ -50,15 +50,36 @@ class RecipesMiniApp {
     .toArray();
   }
 
-
-  async getRecipeById(id) {
-    return await db.recipes.get(id);
-  }
-  
-  async getRecipeCount() {
-    return await db.recipes.count();
-  }
 }
+
+// Tab switching functionality
+document.addEventListener('DOMContentLoaded', () => {
+  const navButtons = document.querySelectorAll('.nav-btn');
+  
+  navButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Get the target tab from data attribute
+      const targetTab = button.getAttribute('data-tab');
+      
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Show target tab
+      document.getElementById(targetTab).classList.add('active');
+      
+      // Update button states
+      navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        btn.classList.add('inactive');
+      });
+      button.classList.remove('inactive');
+      button.classList.add('active');
+    });
+  });
+});
 
 // Create app instance
 const app = new RecipesMiniApp();
+app.pantryManager.loadIngredients();

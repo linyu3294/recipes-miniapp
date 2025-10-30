@@ -10,6 +10,7 @@ body {
   padding: 20px;
   max-width: 600px;
   margin: 0 auto;
+  padding-bottom: 100px;
 }
 
 h1 {
@@ -18,6 +19,55 @@ h1 {
   color: #1a1a1a;
   margin-bottom: 20px;
 }
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fixed navigation at bottom */
+.nav-buttons {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 560px;
+  width: calc(100% - 40px);
+  display: flex;
+  gap: 15px;
+  background-color: #e8e8e8;
+  padding: 10px 0;
+  z-index: 100;
+}
+
+/* Responsive adjustments */
+@media (max-width: 500px) {
+  #selected-ingredients {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .ingredient.wide {
+    grid-column: span 2;
+  }
+}
+
+
+
+/* ---------------------------------- Pantry Tab ---------------------------------- */
 
 /* Search/Dropdown Section */
 .search-section {
@@ -238,14 +288,7 @@ h1 {
   transform: translateY(0);
 }
 
-/* Responsive adjustments */
-@media (max-width: 500px) {
-  #selected-ingredients {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .ingredient.wide {
-    grid-column: span 2;
-  }
-}
+
+
+/* ---------------------------------- Suggestions Tab ---------------------------------- */
 
