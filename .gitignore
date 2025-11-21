@@ -1,5 +1,6 @@
 .DS_Store
 agents/
+pwa-shell-container/
 miniapps-platform-context/
 recipes_db_clean.json
 recipes_db_raw.json
