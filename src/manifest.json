@@ -20,5 +20,25 @@
     "food"
   ],
   "lang": "en",
-  "dir": "ltr"
+  "dir": "ltr",
+  "database": {
+    "name": "RecipeDatabase",
+    "version": 2,
+    "stores": {
+      "recipes": "id, title, *normalizedIngredients, *ingredients",
+      "staticSubstitutions": "++id, ingredient",
+      "pantry": "++id, ingredient",
+      "preferences": "++id, preference",
+      "contextHistory": "++id, date",
+      "likeDislike": "id, title",
+      "ingredients": "++id, name, frequency"
+    },
+    "initialData": {
+      "recipes": "recipes_parsed.json",
+      "ingredients": {
+        "file": "ingredient_vocabulary.json",
+        "keys": ["name", "frequency"]
+      }
+    }
+  }
 }
