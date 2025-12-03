@@ -1,4 +1,5 @@
 // Initialize Dexie database
+// ===========================================
 const db = new Dexie('RecipeDatabase');
 
 // Define schema - increment version number when schema changes
@@ -8,7 +9,8 @@ db.version(2).stores({
   pantry: '++id, ingredient',
   preferences: '++id, preference',
   contextHistory: '++id, date',
-  likeDislike: 'id, title'
+  likeDislike: 'id, title',
+  ingredients: '++id, name, frequency'
 });
 
 
@@ -52,7 +54,9 @@ class RecipesMiniApp {
 
 }
 
+// ===========================================
 // Tab switching functionality
+// ===========================================
 document.addEventListener('DOMContentLoaded', () => {
   const navButtons = document.querySelectorAll('.nav-btn');
 
@@ -83,3 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Create app instance
 const app = new RecipesMiniApp();
 app.pantryManager.loadIngredients();
+
+// Expose db and app to global scope for console testing
+window.db = db;
+window.app = app;
