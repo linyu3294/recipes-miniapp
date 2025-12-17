@@ -2,10 +2,7 @@
 agents/
 pwa-shell-container/
 miniapps-platform-context/
-recipes_db_clean.json
-recipes_db_raw.json
-src/recipes_parsed.json
-recipes_db_clean.json.zip
-recipes_db_clean.json.zip
-src/ingredient_vocabulary.json
-
+*recipes_db_clean.json
+*recipes_db_raw.json
+*recipes_parsed.json
+*ingredient_vocabulary.json
