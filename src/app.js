@@ -57,7 +57,7 @@ class RecipesMiniApp {
 // ===========================================
 // Tab switching functionality
 // ===========================================
-document.addEventListener('DOMContentLoaded', () => {
+onReady(() => {
   const navButtons = document.querySelectorAll('.nav-btn');
 
   navButtons.forEach(button => {
