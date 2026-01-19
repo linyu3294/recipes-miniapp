@@ -54,15 +54,9 @@ class RecipesMiniApp {
 
 }
 
-// ===========================================
-// Tab switching functionality
-// ===========================================
-// Reference the onReady utility in the pwa-shell/src/App.tsx file
-// The above checks document.readyState and executes immediately if ready, or waits for DOMContentLoaded
-// This ensures that the DOM is fully loaded before the app is initialized
-// This is important for the app to work correctly in both standalone and PWA shell modes
-onReady(() => {
-  const navButtons = document.querySelectorAll('.nav-btn');
+const app = new RecipesMiniApp();
+window.db = db;
+window.app = app;
 
   navButtons.forEach(button => {
     button.addEventListener('click', () => {
