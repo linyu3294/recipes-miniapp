@@ -1,8 +1,5 @@
-// Initialize Dexie database
-// ===========================================
 const db = new Dexie('RecipeDatabase');
 
-// Define schema - increment version number when schema changes
 db.version(2).stores({
   recipes: "id, title, *normalizedIngredients, *ingredients",
   staticSubstitutions: '++id, ingredient',
@@ -25,14 +22,9 @@ class RecipesMiniApp {
     this.pantryManager = new PantryManager();
   }
 
-  // Load recipes into IndexedDB (one-time operation)
   async loadRecipesFromJSON(recipesArray) {
     console.log(`Loading ${recipesArray.length} recipes...`);
-
-    // Clear existing recipes
     await db.recipes.clear();
-
-    // Bulk add recipes (Dexie handles batching automatically)
     await db.recipes.bulkAdd(recipesArray);
 
     const count = await db.recipes.count();
@@ -58,21 +50,13 @@ const app = new RecipesMiniApp();
 window.db = db;
 window.app = app;
 
-  navButtons.forEach(button => {
+const setupNavigation = () => {
+  document.querySelectorAll('.nav-btn').forEach(button => {
     button.addEventListener('click', () => {
-      // Get the target tab from data attribute
       const targetTab = button.getAttribute('data-tab');
-
-      // Hide all tabs
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-      });
-
-      // Show target tab
-      document.getElementById(targetTab).classList.add('active');
-
-      // Update button states
-      navButtons.forEach(btn => {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(targetTab)?.classList.add('active');
+      document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('active');
         btn.classList.add('inactive');
       });
@@ -80,12 +64,80 @@ window.app = app;
       button.classList.add('active');
     });
   });
-});
+};
 
-// Create app instance
-const app = new RecipesMiniApp();
-app.pantryManager.loadIngredients();
+const setupSelectAll = () => {
+  const btn = document.getElementById('select-all-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const ingredients = document.querySelectorAll('#selected-ingredients .ingredient');
+    const allSelected = Array.from(ingredients).every(ing => ing.classList.contains('selected'));
+    ingredients.forEach(ing => {
+      allSelected ? ing.classList.remove('selected') : ing.classList.add('selected');
+    });
+    btn.textContent = allSelected ? 'Select All' : 'Deselect All';
+  });
+};
 
-// Expose db and app to global scope for console testing
-window.db = db;
-window.app = app;
+const setupIngredientDropdown = () => {
+  const select = document.getElementById('ingredients');
+  if (!select) return;
+  select.addEventListener('change', (e) => {
+    const value = e.target.value;
+    if (!value) return;
+    const option = e.target.options[e.target.selectedIndex];
+    app.pantryManager.addIngredient(option.text);
+    e.target.selectedIndex = 0;
+  });
+};
+
+const setupAddButtons = () => {
+  document.querySelectorAll('.add-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const item = e.target.closest('.suggestion-item');
+      const name = item?.querySelector('span')?.textContent?.trim();
+      if (name) {
+        app.pantryManager.addIngredient(name);
+      }
+    });
+  });
+};
+
+const setupRemoveButtons = () => {
+  document.querySelectorAll('#selected-ingredients .remove-btn').forEach(btn => {
+    if (btn.hasAttribute('data-listener-attached')) return;
+    btn.setAttribute('data-listener-attached', 'true');
+    btn.addEventListener('click', (e) => {
+      const div = e.target.closest('.ingredient');
+      if (!div) return;
+      const id = div.dataset.id;
+      if (id) {
+        app.pantryManager.deleteIngredient(parseInt(id), div);
+      } else {
+        div.style.transition = 'all 0.3s';
+        div.style.opacity = '0';
+        div.style.transform = 'scale(0.8)';
+        setTimeout(() => div.remove(), 300);
+      }
+    });
+  });
+};
+
+const initApp = () => {
+  const container = document.getElementById('app-container');
+  if (!container || !container.querySelector('.nav-btn')) {
+    setTimeout(initApp, 50);
+    return;
+  }
+  setupNavigation();
+  setupSelectAll();
+  setupIngredientDropdown();
+  setupAddButtons();
+  setupRemoveButtons();
+  setTimeout(() => {
+    app.pantryManager.loadIngredients();
+    setupRemoveButtons();
+  }, 100);
+};
+
+onReady(initApp);
