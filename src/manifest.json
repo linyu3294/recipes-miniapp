@@ -2,7 +2,7 @@
   "name": "Recipes App",
   "short_name": "RecipesApp",
   "start_url": "index.html",
-  "description": "This is an example mini app that shows a list of recipes",
+  "description": "This is an example mini app that helps you manage your pantry and find recipes.",
   "display": "standalone",
   "orientation": "portrait",
   "theme_color": "#667eea",
