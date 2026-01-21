@@ -27,12 +27,33 @@ class PantryManager {
         const nameElement = document.createElement('h3');
         nameElement.textContent = item.ingredient;
     
+        // Add click handler for individual selection
+        ingredientDiv.addEventListener('click', (e) => {
+            // Don't toggle if clicking the remove button
+            if (e.target.closest('.remove-btn')) {
+                return;
+            }
+            // Toggle selected class
+            ingredientDiv.classList.toggle('selected');
+            // Update Select All button state
+            this.updateSelectAllButtonState();
+        });
+    
         // Assemble
         ingredientDiv.appendChild(removeBtn);
         ingredientDiv.appendChild(nameElement);
     
         // Add to container
         this.selectedIngredientUIContainer.appendChild(ingredientDiv);
+    }
+
+    updateSelectAllButtonState() {
+        const btn = document.getElementById('select-all-btn');
+        if (!btn) return;
+        
+        const ingredients = document.querySelectorAll('#selected-ingredients .ingredient');
+        const allSelected = ingredients.length > 0 && Array.from(ingredients).every(ing => ing.classList.contains('selected'));
+        btn.textContent = allSelected ? 'Deselect All' : 'Select All';
     }
 
     // READ: Load all ingredients from database
@@ -84,6 +105,8 @@ class PantryManager {
         
             setTimeout(() => {
                 element.remove();
+                // Update Select All button state after removal
+                this.updateSelectAllButtonState();
             }, 300);
         
             console.log(`✓ Deleted ingredient ID: ${id}`);
