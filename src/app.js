@@ -62,6 +62,11 @@ const setupNavigation = () => {
       });
       button.classList.remove('inactive');
       button.classList.add('active');
+      
+      // Load recipe suggestions when switching to suggestions tab
+      if (targetTab === 'suggestions-tab' && window.recipeEngine) {
+        window.recipeEngine.loadSuggestions();
+      }
     });
   });
 };
@@ -133,6 +138,15 @@ const initApp = () => {
     app.pantryManager.loadIngredients();
     setupRemoveButtons();
   }, 100);
+};
+
+// Simple onReady function for DOM initialization
+const onReady = (callback) => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', callback);
+  } else {
+    callback();
+  }
 };
 
 onReady(initApp);

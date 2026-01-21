@@ -15,6 +15,7 @@
   <script defer src="pantry-manager.js"></script>
   <script defer src="app.js"></script>
   <script defer src="ingredients.js"></script>
+  <script defer src="recipes.js"></script>
 </head>
 <body>
     <div id="pantry-tab" class="tab-content active">
@@ -52,80 +53,7 @@
 
    <div id="suggestions-tab" class="tab-content">
     <div id="recipe-suggestions" class="container-fluid px-0">
-        
-        <!-- Recipe Card 1 - Collapsed -->
-        <div class="recipe-card card mb-3">
-            <div class="card-body p-4">
-                <div class="row g-3">
-                    <!-- Left Column: Recipe Content -->
-                    <div class="col-10">
-                        <h2 class="recipe-title mb-2">Fried Chicken</h2>
-                        <p class="recipe-ingredients mb-0">
-                            Chicken pieces, buttermilk, salt, black pepper, all-purpose flour, paprika, garlic powder...
-                        </p>
-                    </div>
-                    
-                    <!-- Right Column: Action Buttons -->
-                    <div class="col-2 d-flex flex-column align-items-center justify-content-start gap-2">
-                        <button class="action-btn like-btn btn btn-link p-2" aria-label="Like recipe">
-                            <i class="bi bi-hand-thumbs-up-fill fs-4"></i>
-                        </button>
-                        <button class="action-btn hide-btn btn btn-link p-2" aria-label="Hide recipe">
-                            <i class="bi bi-eye-slash fs-4"></i>
-                        </button>
-                        <button class="action-btn dislike-btn btn btn-link p-2" aria-label="Dislike recipe">
-                            <i class="bi bi-hand-thumbs-down-fill fs-4"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Expand Button (centered at bottom) -->
-                <div class="text-center mt-2">
-                    <button class="expand-btn btn btn-link p-2" aria-label="Expand recipe">
-                        <i class="bi bi-chevron-down fs-4"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recipe Card 2 - Expanded -->
-        <div class="recipe-card card mb-3 expanded">
-            <div class="card-body p-4">
-                <div class="row g-3">
-                    <!-- Left Column: Recipe Content -->
-                    <div class="col-10">
-                        <h2 class="recipe-title mb-2">Cat Paella</h2>
-                        <p class="recipe-ingredients mb-0">
-                            Olive oil, Onion, Garlic, Red bell pepper, Green bell pepper, Tomato, Green beans, 
-                            Artichoke hearts, Zucchini, Eggplant, Mushrooms, Peas, Chickpeas, Basmati rice, 
-                            Vegetable stock, Saffron, Smoked paprika, Bay leaf, Lemon, Parsley, Thyme, 
-                            Rosemary, Black pepper, Salt
-                        </p>
-                    </div>
-                    
-                    <!-- Right Column: Action Buttons -->
-                    <div class="col-2 d-flex flex-column align-items-center justify-content-start gap-2">
-                        <button class="action-btn like-btn btn btn-link p-2 active" aria-label="Like recipe">
-                            <i class="bi bi-hand-thumbs-up-fill fs-4"></i>
-                        </button>
-                        <button class="action-btn hide-btn btn btn-link p-2" aria-label="Hide recipe">
-                            <i class="bi bi-eye-slash fs-4"></i>
-                        </button>
-                        <button class="action-btn dislike-btn btn btn-link p-2 active" aria-label="Dislike recipe">
-                            <i class="bi bi-hand-thumbs-down-fill fs-4"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Expand Button (centered at bottom) -->
-                <div class="text-center mt-2">
-                    <button class="expand-btn btn btn-link p-2" aria-label="Collapse recipe">
-                        <i class="bi bi-chevron-up fs-4"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
+        <!-- Recipe suggestions will be dynamically generated here -->
     </div>
 </div>
    
