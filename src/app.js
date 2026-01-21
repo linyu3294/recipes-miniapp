@@ -79,16 +79,11 @@ const setupSelectAll = () => {
   });
 };
 
+// Ingredient dropdown is now handled by ingredients.js
+// This function is kept for backward compatibility but does nothing
 const setupIngredientDropdown = () => {
-  const select = document.getElementById('ingredients');
-  if (!select) return;
-  select.addEventListener('change', (e) => {
-    const value = e.target.value;
-    if (!value) return;
-    const option = e.target.options[e.target.selectedIndex];
-    app.pantryManager.addIngredient(option.text);
-    e.target.selectedIndex = 0;
-  });
+  // Ingredient search is now handled by ingredients.js
+  // This function is intentionally empty
 };
 
 const setupAddButtons = () => {

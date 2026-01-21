@@ -14,6 +14,7 @@
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/dexie/4.2.0/dexie.js"></script> 
   <script defer src="pantry-manager.js"></script>
   <script defer src="app.js"></script>
+  <script defer src="ingredients.js"></script>
 </head>
 <body>
     <div id="pantry-tab" class="tab-content active">
@@ -23,32 +24,10 @@
         </div>
     
         <div class="search-section">
-            <select id="ingredients">
-                <option value="" disabled selected>Rice</option>
-                <option value="rice">Rice</option>
-                <option value="white-rice">White Rice</option>
-                <option value="rice-vinegar">Rice Vinegar</option>
-                <option value="butter">Butter</option>
-                <option value="tofu">Tofu</option>
-                <option value="radish">Radish</option>
-                <option value="soy-sauce">Soy Sauce</option>
-            </select>
+            <!-- Search input will be created by ingredients.js -->
         </div>
     
-        <div class="suggestions-section">
-            <div class="suggestion-item">
-                <span>Rice</span>
-                <button class="add-btn">+</button>
-            </div>
-            <div class="suggestion-item">
-                <span>White Rice</span>
-                <button class="add-btn">+</button>
-            </div>
-            <div class="suggestion-item">
-                <span>Rice Vinegar</span>
-                <button class="add-btn">+</button>
-            </div>
-        </div>
+        <div class="suggestions-section"></div>
     
         <div id="selected-ingredients">
             <div class="ingredient">

@@ -74,6 +74,32 @@ h1 {
   margin-bottom: 20px;
 }
 
+/* Search Input Field */
+#ingredient-search {
+  width: 100%;
+  padding: 20px;
+  font-size: 18px;
+  color: #1a1a1a;
+  background-color: white;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+
+#ingredient-search:focus {
+  outline: none;
+  border-color: #00bfa5;
+}
+
+#ingredient-search::placeholder {
+  color: #999;
+}
+
+.search-section {
+  position: relative;
+}
+
+/* Legacy select styles (kept for backward compatibility) */
 #ingredients {
   width: 100%;
   padding: 20px;
@@ -101,6 +127,11 @@ h1 {
   border-radius: 12px;
   padding: 20px;
   margin-bottom: 20px;
+  display: none;
+}
+
+.suggestions-section:not(:empty) {
+  display: block;
 }
 
 .suggestion-item {
@@ -108,13 +139,36 @@ h1 {
   justify-content: space-between;
   align-items: center;
   padding: 16px 0;
-  color: #999;
   font-size: 18px;
   border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.suggestion-item:hover {
+  background-color: #f5f5f5;
 }
 
 .suggestion-item:last-child {
   border-bottom: none;
+}
+
+.suggestion-item .ingredient-name {
+  flex: 1;
+  color: #1a1a1a;
+}
+
+.suggestion-item .ingredient-name mark {
+  background-color: #fff9c4;
+  color: #1a1a1a;
+  padding: 0;
+  font-weight: 500;
+}
+
+.suggestion-item .ingredient-frequency {
+  font-size: 14px;
+  color: #999;
+  margin-right: 12px;
 }
 
 .add-btn {
