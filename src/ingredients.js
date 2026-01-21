@@ -26,6 +26,7 @@ const calculateSimilarity = (searchTerm, ingredientName) => {
   return fuzzyMatch(search, ingredient) * SIMILARITY_SCORES.FUZZY_SCALE;
 };
 
+
 const fuzzyMatch = (search, text) => {
   let searchIndex = 0;
   let textIndex = 0;
@@ -37,7 +38,6 @@ const fuzzyMatch = (search, text) => {
     }
     textIndex++;
   }
-
   return searchIndex / searchLen;
 };
 
@@ -45,25 +45,26 @@ const escapeRegex = (str) => {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
+
 const highlightMatch = (text, searchTerm) => {
   if (!searchTerm) return text;
   const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
   return text.replace(regex, '<mark>$1</mark>');
 };
 
+
 const sortByRelevance = (a, b) => {
   if (Math.abs(a.score - b.score) > 0.01) {
     return b.score - a.score;
   }
-  
   const freqA = a.frequency || 0;
   const freqB = b.frequency || 0;
   if (freqB !== freqA) {
     return freqB - freqA;
   }
-  
   return a.name.localeCompare(b.name);
 };
+
 
 class IngredientSearch {
   constructor() {
@@ -72,7 +73,7 @@ class IngredientSearch {
     this.currentResults = [];
     this.debounceTimer = null;
   }
-
+  
   init() {
     this.createSearchInput();
     this.suggestionsContainer = document.querySelector('.suggestions-section');
