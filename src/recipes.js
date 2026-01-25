@@ -6,6 +6,7 @@
 class RecipeSuggestionEngine {
   constructor() {
     this.currentSuggestions = [];
+    this.MAX_RESULTS = 10;
   }
 
   /**
@@ -260,10 +261,23 @@ class RecipeSuggestionEngine {
         return b.secondaryMatches - a.secondaryMatches;
       });
       
-      // Filter to only include recipes with at least one match and return top 5
+      // Get disliked recipe IDs to filter them out
+      const dislikedIds = await window.app.getDislikedRecipeIds();
+
+      // Filter to only include recipes with at least one match, exclude disliked recipes, and return top 5
       const topMatches = scoredRecipes
-        .filter(result => result.primaryMatches > 0 || result.secondaryMatches > 0)
-        .slice(0, 5);
+        .filter(result => {
+          // Must have at least one match
+          if (result.primaryMatches === 0 && result.secondaryMatches === 0) {
+            return false;
+          }
+          // Must not be disliked
+          if (dislikedIds.has(result.recipe.id)) {
+            return false;
+          }
+          return true;
+        })
+        .slice(0, MAX_RESULTS);
 
       return topMatches;
     } catch (error) {
@@ -316,10 +330,14 @@ class RecipeSuggestionEngine {
    * Create a recipe card element
    * @param {Object} scoredRecipe - Scored recipe object
    * @param {number} index - Index of the recipe
-   * @returns {HTMLElement} Recipe card DOM element
+   * @returns {Promise<HTMLElement>} Recipe card DOM element
    */
-  createRecipeCard(scoredRecipe, index) {
+  async createRecipeCard(scoredRecipe, index) {
     const { recipe, primaryMatches, secondaryMatches, totalSelected } = scoredRecipe;
+    
+    // Check if recipe is liked
+    const likeStatus = await window.app.getLikeDislikeStatus(recipe.id);
+    const isLiked = likeStatus === 'like';
     
     const card = document.createElement('div');
     card.className = 'recipe-card card mb-3';
@@ -329,6 +347,8 @@ class RecipeSuggestionEngine {
     const matchInfo = totalSelected > 0 
       ? `${primaryMatches}/${totalSelected} ingredients matched`
       : 'No match info';
+
+    const likeBtnClass = isLiked ? 'action-btn like-btn btn btn-link p-2 active' : 'action-btn like-btn btn btn-link p-2';
 
     card.innerHTML = `
       <div class="card-body p-4">
@@ -344,7 +364,7 @@ class RecipeSuggestionEngine {
           
           <!-- Right Column: Action Buttons -->
           <div class="col-2 d-flex flex-column align-items-center justify-content-start gap-2">
-            <button class="action-btn like-btn btn btn-link p-2" aria-label="Like recipe">
+            <button class="${likeBtnClass}" aria-label="Like recipe">
               <i class="bi bi-hand-thumbs-up-fill fs-4"></i>
             </button>
             <button class="action-btn hide-btn btn btn-link p-2" aria-label="Hide recipe">
@@ -403,6 +423,46 @@ class RecipeSuggestionEngine {
       }
     });
 
+    // Add like button click handler
+    const likeBtn = card.querySelector('.like-btn');
+    likeBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const currentStatus = await window.app.getLikeDislikeStatus(recipe.id);
+      
+      if (currentStatus === 'like') {
+        // Already liked, remove like (toggle off) by deleting the entry
+        try {
+          await window.db.likeDislike.delete(recipe.id);
+          likeBtn.classList.remove('active');
+          console.log(`✓ Removed like for recipe: ${recipe.title}`);
+        } catch (error) {
+          console.error('Error removing like:', error);
+        }
+      } else {
+        // Not liked, add like
+        await window.app.saveLikeDislike(recipe.id, recipe.title, 'like');
+        likeBtn.classList.add('active');
+      }
+    });
+
+    // Add dislike button click handler
+    const dislikeBtn = card.querySelector('.dislike-btn');
+    dislikeBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      
+      // Save dislike to database
+      await window.app.saveLikeDislike(recipe.id, recipe.title, 'dislike');
+      
+      // Remove card from UI with animation
+      card.style.transition = 'all 0.3s';
+      card.style.opacity = '0';
+      card.style.transform = 'scale(0.8)';
+      
+      setTimeout(() => {
+        card.remove();
+      }, 300);
+    });
+
     return card;
   }
 
@@ -421,7 +481,7 @@ class RecipeSuggestionEngine {
    * Render recipe suggestions to the UI
    * @param {Array} suggestions - Array of scored recipes
    */
-  renderSuggestions(suggestions) {
+  async renderSuggestions(suggestions) {
     const container = document.getElementById('recipe-suggestions');
     if (!container) {
       console.error('Recipe suggestions container not found');
@@ -442,11 +502,12 @@ class RecipeSuggestionEngine {
       return;
     }
 
-    // Create and append recipe cards
-    suggestions.forEach((scoredRecipe, index) => {
-      const card = this.createRecipeCard(scoredRecipe, index);
+    // Create and append recipe cards (await async card creation)
+    for (let index = 0; index < suggestions.length; index++) {
+      const scoredRecipe = suggestions[index];
+      const card = await this.createRecipeCard(scoredRecipe, index);
       container.appendChild(card);
-    });
+    }
   }
 
   /**

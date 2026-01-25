@@ -1,12 +1,12 @@
 const db = new Dexie('RecipeDatabase');
 
-db.version(2).stores({
+db.version(1).stores({
   recipes: "id, title, *normalizedIngredients, *ingredients",
   staticSubstitutions: '++id, ingredient',
   pantry: '++id, ingredient',
   preferences: '++id, preference',
   contextHistory: '++id, date',
-  likeDislike: 'id, title',
+  likeDislike: 'id, title, status',
   ingredients: '++id, name, frequency'
 });
 
@@ -44,9 +44,46 @@ class RecipesMiniApp {
       .toArray();
   }
 
+  async saveLikeDislike(recipeId, recipeTitle, status) {
+    try {
+      await db.likeDislike.put({
+        id: recipeId,
+        title: recipeTitle,
+        status: status
+      });
+      console.log(`✓ Saved ${status} for recipe: ${recipeTitle}`);
+    } catch (error) {
+      console.error('Error saving like/dislike:', error);
+    }
+  }
+
+  async getLikeDislikeStatus(recipeId) {
+    try {
+      const entry = await db.likeDislike.get(recipeId);
+      return entry ? entry.status : null;
+    } catch (error) {
+      console.error('Error getting like/dislike status:', error);
+      return null;
+    }
+  }
+
+  async getDislikedRecipeIds() {
+    try {
+      const disliked = await db.likeDislike
+        .where('status')
+        .equals('dislike')
+        .toArray();
+      return new Set(disliked.map(entry => entry.id));
+    } catch (error) {
+      console.error('Error getting disliked recipes:', error);
+      return new Set();
+    }
+  }
+
 }
 
 const app = new RecipesMiniApp();
+
 window.db = db;
 window.app = app;
 

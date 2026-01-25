@@ -346,3 +346,82 @@ h1 {
 
 /* ---------------------------------- Suggestions Tab ---------------------------------- */
 
+/* Recipe Cards */
+.recipe-card {
+  transition: all 0.3s;
+}
+
+.recipe-card .card-body {
+  background-color: white;
+}
+
+.recipe-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.recipe-ingredients {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* Action Buttons */
+.action-btn {
+  color: #666;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+}
+
+.action-btn:hover {
+  color: #1a1a1a;
+  transform: scale(1.1);
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Like Button Active State */
+.action-btn.like-btn.active {
+  color: #00bfa5;
+}
+
+.action-btn.like-btn.active i {
+  color: #00bfa5;
+}
+
+/* Dislike Button */
+.action-btn.dislike-btn:hover {
+  color: #d32f2f;
+}
+
+/* Expand Button */
+.expand-btn {
+  color: #666;
+  transition: all 0.2s;
+}
+
+.expand-btn:hover {
+  color: #1a1a1a;
+}
+
+/* Recipe Expanded Content */
+.recipe-expanded-content h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.recipe-expanded-content ul {
+  padding-left: 20px;
+}
+
+.recipe-expanded-content li {
+  margin-bottom: 8px;
+  color: #333;
+}
+
