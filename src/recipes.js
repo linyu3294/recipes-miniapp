@@ -438,21 +438,20 @@ class RecipeSuggestionEngine {
     const likeBtn = card.querySelector('.like-btn');
     likeBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const currentStatus = await window.app.getLikeDislikeStatus(recipe.id);
-      
-      if (currentStatus === 'like') {
-        // Already liked, remove like (toggle off) by deleting the entry
-        try {
+      e.preventDefault();
+      try {
+        const currentStatus = await window.app.getLikeDislikeStatus(recipe.id);
+        if (currentStatus === 'like') {
           await window.db.likeDislike.delete(recipe.id);
           likeBtn.classList.remove('active');
           console.log(`✓ Removed like for recipe: ${recipe.title}`);
-        } catch (error) {
-          console.error('Error removing like:', error);
+        } else {
+          await window.app.saveLikeDislike(recipe.id, recipe?.title ?? 'Untitled', 'like');
+          likeBtn.classList.add('active');
         }
-      } else {
-        // Not liked, add like
-        await window.app.saveLikeDislike(recipe.id, recipe.title, 'like');
-        likeBtn.classList.add('active');
+      } catch (error) {
+        console.error('Error saving like:', error);
+        alert('Could not save like. Please try again.');
       }
     });
 
@@ -460,18 +459,20 @@ class RecipeSuggestionEngine {
     const dislikeBtn = card.querySelector('.dislike-btn');
     dislikeBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      
-      // Save dislike to database
-      await window.app.saveLikeDislike(recipe.id, recipe.title, 'dislike');
-      
-      // Remove card from UI with animation
-      card.style.transition = 'all 0.3s';
-      card.style.opacity = '0';
-      card.style.transform = 'scale(0.8)';
-      
-      setTimeout(() => {
-        card.remove();
-      }, 300);
+      e.preventDefault();
+      try {
+        await window.app.saveLikeDislike(recipe.id, recipe?.title ?? 'Untitled', 'dislike');
+        // Only remove card after save succeeded
+        card.style.transition = 'all 0.3s';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.8)';
+        setTimeout(() => {
+          card.remove();
+        }, 300);
+      } catch (error) {
+        console.error('Failed to save dislike:', error);
+        alert('Could not save dislike. Please try again.');
+      }
     });
 
     return card;

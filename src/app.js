@@ -45,15 +45,23 @@ class RecipesMiniApp {
   }
 
   async saveLikeDislike(recipeId, recipeTitle, status) {
+    if (recipeId == null || recipeId === '') {
+      throw new Error('Recipe ID is required to save like/dislike');
+    }
+    const title =
+      (recipeTitle != null && String(recipeTitle).trim() !== '')
+        ? String(recipeTitle).trim()
+        : 'Untitled';
     try {
       await db.likeDislike.put({
         id: recipeId,
-        title: recipeTitle,
+        title,
         status: status
       });
-      console.log(`✓ Saved ${status} for recipe: ${recipeTitle}`);
+      console.log(`✓ Saved ${status} for recipe: ${title}`);
     } catch (error) {
       console.error('Error saving like/dislike:', error);
+      throw error;
     }
   }
 
@@ -90,7 +98,9 @@ class RecipesMiniApp {
   }
 
   async autoLike(recipeId, title) {
-    await db.likeDislike.put({ id: recipeId, title, status: 'like' });
+    const safeTitle =
+      (title != null && String(title).trim() !== '') ? String(title).trim() : 'Untitled';
+    await db.likeDislike.put({ id: recipeId, title: safeTitle, status: 'like' });
   }
 
   /**
