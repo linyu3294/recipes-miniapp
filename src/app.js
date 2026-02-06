@@ -80,6 +80,123 @@ class RecipesMiniApp {
     }
   }
 
+  async saveForkedRecipe(recipe) {
+    await db.recipes.add(recipe);
+    return recipe.id;
+  }
+
+  async updateRecipe(recipe) {
+    await db.recipes.put(recipe);
+  }
+
+  async autoLike(recipeId, title) {
+    await db.likeDislike.put({ id: recipeId, title, status: 'like' });
+  }
+
+  /**
+   * Get unique normalized ingredient names from a recipe (same dedupe logic as recalculateIngredientTable).
+   * @param {{ ingredients?: string[], normalizedIngredients?: string[] }} recipe
+   * @returns {string[]}
+   */
+  _uniqueNormalizedIngredients(recipe) {
+    const seen = new Set();
+    const list = recipe.normalizedIngredients || (recipe.ingredients || []).map(i => (i || '').toLowerCase().trim());
+    const out = [];
+    list.forEach(name => {
+      if (!name) return;
+      const key = name.toLowerCase().trim();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(key);
+    });
+    return out;
+  }
+
+  /**
+   * Increment frequency for one ingredient by name (or create with frequency 1).
+   * @param {string} normalizedName
+   */
+  async _incrementIngredientFrequency(normalizedName) {
+    const existing = await db.ingredients.where('name').equals(normalizedName).first();
+    if (existing) {
+      await db.ingredients.update(existing.id, { frequency: (existing.frequency || 0) + 1 });
+    } else {
+      await db.ingredients.add({ name: normalizedName, frequency: 1 });
+    }
+  }
+
+  /**
+   * Decrement frequency for one ingredient by name; delete record if frequency becomes 0.
+   * @param {string} normalizedName
+   */
+  async _decrementIngredientFrequency(normalizedName) {
+    const existing = await db.ingredients.where('name').equals(normalizedName).first();
+    if (!existing) return;
+    const newFreq = (existing.frequency || 1) - 1;
+    if (newFreq <= 0) {
+      await db.ingredients.delete(existing.id);
+    } else {
+      await db.ingredients.update(existing.id, { frequency: newFreq });
+    }
+  }
+
+  /**
+   * Update ingredients table when a recipe is edited: -1 for removed/changed ingredients, +1 for added/new ingredients.
+   * @param {{ ingredients?: string[], normalizedIngredients?: string[] }} oldRecipe
+   * @param {{ ingredients?: string[], normalizedIngredients?: string[] }} newRecipe
+   */
+  async updateIngredientsTableOnEdit(oldRecipe, newRecipe) {
+    const oldSet = new Set(this._uniqueNormalizedIngredients(oldRecipe));
+    const newSet = new Set(this._uniqueNormalizedIngredients(newRecipe));
+    for (const name of oldSet) {
+      await this._decrementIngredientFrequency(name);
+    }
+    for (const name of newSet) {
+      await this._incrementIngredientFrequency(name);
+    }
+  }
+
+  /**
+   * Update ingredients table when a recipe is forked and saved: +1 for each ingredient in the saved recipe.
+   * @param {{ ingredients?: string[], normalizedIngredients?: string[] }} recipe
+   */
+  async updateIngredientsTableOnFork(recipe) {
+    const names = this._uniqueNormalizedIngredients(recipe);
+    for (const name of names) {
+      await this._incrementIngredientFrequency(name);
+    }
+  }
+
+  /**
+   * Rebuild the ingredients table from all recipes (name + frequency).
+   * Call after saving/updating/forking a recipe so ingredient search stays in sync.
+   */
+  async recalculateIngredientTable() {
+    try {
+      const recipes = await db.recipes.toArray();
+      const freq = new Map();
+      recipes.forEach(recipe => {
+        const seen = new Set();
+        const list = recipe.normalizedIngredients || (recipe.ingredients || []).map(i => (i || '').toLowerCase().trim());
+        list.forEach(name => {
+          if (!name) return;
+          const key = name.toLowerCase().trim();
+          if (seen.has(key)) return;
+          seen.add(key);
+          freq.set(key, (freq.get(key) || 0) + 1);
+        });
+      });
+      await db.ingredients.clear();
+      const entries = Array.from(freq.entries())
+        .map(([name, frequency]) => ({ name, frequency }))
+        .sort((a, b) => b.frequency - a.frequency || a.name.localeCompare(b.name));
+      if (entries.length > 0) {
+        await db.ingredients.bulkAdd(entries);
+      }
+    } catch (err) {
+      console.error('Error recalculating ingredient table:', err);
+    }
+  }
 }
 
 const app = new RecipesMiniApp();

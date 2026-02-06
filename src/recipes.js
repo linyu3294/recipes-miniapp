@@ -426,25 +426,12 @@ class RecipeSuggestionEngine {
       </div>
     `;
 
-    // Add expand/collapse functionality
     const expandBtn = card.querySelector('.expand-btn');
     const expandedContent = card.querySelector('.recipe-expanded-content');
     const chevronIcon = expandBtn.querySelector('i');
 
     expandBtn.addEventListener('click', () => {
-      const isExpanded = card.classList.contains('expanded');
-      
-      if (isExpanded) {
-        card.classList.remove('expanded');
-        expandedContent.style.display = 'none';
-        chevronIcon.className = 'bi bi-chevron-down fs-4';
-        expandBtn.setAttribute('aria-label', 'Expand recipe');
-      } else {
-        card.classList.add('expanded');
-        expandedContent.style.display = 'block';
-        chevronIcon.className = 'bi bi-chevron-up fs-4';
-        expandBtn.setAttribute('aria-label', 'Collapse recipe');
-      }
+      this.showRecipeDetail(recipe);
     });
 
     // Add like button click handler
@@ -534,10 +521,41 @@ class RecipeSuggestionEngine {
     }
   }
 
-  /**
-   * Load and display recipe suggestions
-   * Called when user switches to suggestions tab
-   */
+  showRecipeDetail(recipe) {
+    const container = document.getElementById('recipe-suggestions');
+    if (!container) return;
+    const ingredients = recipe.ingredients || [];
+    const instructions = recipe.instructions || 'No instructions available';
+    container.innerHTML = `
+      <div class="recipe-detail-view">
+        <div class="recipe-detail-header d-flex align-items-center justify-content-between gap-2">
+          <button type="button" class="back-btn btn btn-link p-0" aria-label="Back"><i class="bi bi-arrow-left fs-4"></i></button>
+          <h2 class="recipe-detail-title flex-grow-1 mb-0 text-center">${this.escapeHtml(recipe.title || 'Untitled')}</h2>
+          <div class="recipe-detail-actions d-flex gap-1">
+            <button type="button" class="fork-btn btn btn-link p-2" aria-label="Fork recipe"><i class="bi bi-diagram-3 fs-5"></i></button>
+            <button type="button" class="edit-btn btn btn-link p-2" aria-label="Edit recipe"><i class="bi bi-pencil fs-5"></i></button>
+            <button type="button" class="bookmark-btn btn btn-link p-2" aria-label="Bookmark" disabled><i class="bi bi-bookmark fs-5"></i></button>
+          </div>
+        </div>
+        <div class="recipe-detail-body mt-3">
+          <h4 class="mb-2">Ingredients:</h4>
+          <ul class="recipe-detail-ingredients mb-3">
+            ${ingredients.map(ing => `<li>${this.escapeHtml(ing)}</li>`).join('')}
+          </ul>
+          <h4 class="mb-2">Instructions:</h4>
+          <p class="recipe-detail-instructions" style="white-space: pre-wrap;">${this.escapeHtml(instructions)}</p>
+        </div>
+      </div>
+    `;
+    container.querySelector('.back-btn').addEventListener('click', () => this.loadSuggestions());
+    container.querySelector('.fork-btn').addEventListener('click', () => {
+      if (window.substitutionEditor) window.substitutionEditor.open(recipe, true);
+    });
+    container.querySelector('.edit-btn').addEventListener('click', () => {
+      if (window.substitutionEditor) window.substitutionEditor.open(recipe, false);
+    });
+  }
+
   async loadSuggestions() {
     const container = document.getElementById('recipe-suggestions');
     if (container) {
