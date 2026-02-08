@@ -307,9 +307,9 @@ const loadLibrary = async () => {
               <h2 class="recipe-title mb-2">${safeTitle.innerHTML}</h2>
               <p class="recipe-ingredients mb-0">${safeIngredients.innerHTML}</p>
             </div>
-            <div class="library-status-badge ms-2 flex-shrink-0">
+            <button class="library-remove-btn ms-2 flex-shrink-0" aria-label="Remove from library">
               ${statusIcon}
-            </div>
+            </button>
           </div>
           <div class="text-center mt-2">
             <button class="expand-btn btn btn-link p-2" aria-label="View recipe">
@@ -318,6 +318,32 @@ const loadLibrary = async () => {
           </div>
         </div>
       `;
+      // Click status icon to remove entry from library
+      card.querySelector('.library-remove-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          await app.removeFromLibrary(entry.id);
+          card.style.transition = 'all 0.3s';
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            card.remove();
+            // Show empty message if no entries left
+            const remaining = container.querySelectorAll('.library-card');
+            if (remaining.length === 0) {
+              container.innerHTML = `
+                <div class="card mb-3">
+                  <div class="card-body p-4 text-center">
+                    <p class="mb-0">Your library is empty. Like, dislike, or bookmark recipes to see them here.</p>
+                  </div>
+                </div>
+              `;
+            }
+          }, 300);
+        } catch (err) {
+          console.error('Error removing from library:', err);
+        }
+      });
       // Click expand to navigate to recipe detail
       card.querySelector('.expand-btn').addEventListener('click', async () => {
         try {

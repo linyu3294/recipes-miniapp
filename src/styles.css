@@ -630,14 +630,16 @@ h1 {
   color: #1a1a1a;
   cursor: pointer;
   transition: color 0.2s;
+  text-decoration: none;
 }
 
-.recipe-detail-header .bookmark-btn.active {
-  color: #00bfa5;
+.recipe-detail-header .bookmark-btn.active,
+.recipe-detail-header .bookmark-btn.active:hover {
+  color: #00bfa5 !important;
 }
 
 .recipe-detail-header .bookmark-btn.active i {
-  color: #00bfa5;
+  color: #00bfa5 !important;
 }
 
 .recipe-detail-title {
@@ -736,11 +738,17 @@ h1 {
 
 .substitution-prompt-area,
 .substitution-result-area {
-  margin-top: 16px;
+  margin-top: 8px;
+  margin-bottom: 8px;
   padding: 16px;
   background: #f5f5f5;
   border-radius: 12px;
   border: 1px solid #eee;
+}
+
+.substitution-loading {
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .substitution-prompt-label {
@@ -888,9 +896,18 @@ h1 {
   transition: background 0.2s;
 }
 
-.save-recipe-btn:hover {
+.save-recipe-btn:hover:not(:disabled) {
   background: #1a1a1a;
   border-color: #1a1a1a;
+}
+
+.save-recipe-btn:disabled,
+.save-recipe-btn.disabled {
+  background: #999;
+  border-color: #999;
+  color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ---------------------------------- WiFi Status Indicator ---------------------------------- */
@@ -1039,6 +1056,25 @@ h1 {
   align-items: flex-start;
   justify-content: center;
   padding-top: 4px;
+}
+
+.library-remove-btn {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.library-remove-btn:hover {
+  opacity: 0.7;
+}
+
+.library-remove-btn:active {
+  transform: scale(0.9);
 }
 
 .library-status-icon {

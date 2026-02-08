@@ -103,29 +103,51 @@ class SubstitutionEditor {
         </div>
       </div>
       <div class="substitution-ingredients-list"></div>
-      <div class="substitution-prompt-area" style="display: none;">
-        <label class="substitution-prompt-label">Enter your substitution prompt...</label>
-        <div class="d-flex gap-2 mt-2">
-          <input type="text" class="substitution-prompt-input form-control" placeholder="e.g. More fruity" />
-          <button type="button" class="substitution-prompt-submit"><i class="bi bi-arrow-right"></i></button>
-        </div>
-      </div>
-      <div class="substitution-result-area" style="display: none;">
-        <p class="substitution-explanation"></p>
-        <p class="substitution-choose-label mb-2">Choose one:</p>
-        <div class="substitution-options-list d-flex flex-wrap gap-2 mb-3"></div>
-        <div class="accept-reject-buttons d-flex gap-2">
-          <button type="button" class="accept-substitution-btn">Accept</button>
-          <button type="button" class="reject-substitution-btn">Reject</button>
-        </div>
-      </div>
-      <div class="substitution-loading" style="display: none;">Loading suggestions...</div>
       <div class="substitution-save-area mt-4">
         <button type="button" class="save-recipe-btn w-100">Save Recipe</button>
       </div>
     `;
     this.container = wrap;
     parent.appendChild(wrap);
+
+    // Create the movable inline panels (prompt, result, loading)
+    // These get inserted after the active row dynamically
+    this._promptEl = document.createElement('div');
+    this._promptEl.className = 'substitution-prompt-area';
+    this._promptEl.style.display = 'none';
+    this._promptEl.innerHTML = `
+      <label class="substitution-prompt-label">Enter your substitution prompt...</label>
+      <div class="d-flex gap-2 mt-2">
+        <input type="text" class="substitution-prompt-input form-control" placeholder="e.g. More fruity" />
+        <button type="button" class="substitution-prompt-submit"><i class="bi bi-arrow-right"></i></button>
+      </div>
+    `;
+
+    this._resultEl = document.createElement('div');
+    this._resultEl.className = 'substitution-result-area';
+    this._resultEl.style.display = 'none';
+    this._resultEl.innerHTML = `
+      <p class="substitution-explanation"></p>
+      <p class="substitution-choose-label mb-2">Choose one:</p>
+      <div class="substitution-options-list d-flex flex-wrap gap-2 mb-3"></div>
+      <div class="accept-reject-buttons d-flex gap-2">
+        <button type="button" class="accept-substitution-btn">Accept</button>
+        <button type="button" class="reject-substitution-btn">Reject</button>
+      </div>
+    `;
+
+    this._loadingEl = document.createElement('div');
+    this._loadingEl.className = 'substitution-loading';
+    this._loadingEl.style.display = 'none';
+    this._loadingEl.textContent = 'Loading suggestions...';
+
+    // Wire up event listeners on the movable panels
+    this._promptEl.querySelector('.substitution-prompt-submit').addEventListener('click', () => this.submitPrompt());
+    this._promptEl.querySelector('.substitution-prompt-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.submitPrompt();
+    });
+    this._resultEl.querySelector('.accept-substitution-btn').addEventListener('click', () => this.acceptSubstitution());
+    this._resultEl.querySelector('.reject-substitution-btn').addEventListener('click', () => this.rejectSubstitution());
 
     // Connectivity status: dynamic updates via online/offline events
     const updateConnectivity = () => {
@@ -178,14 +200,17 @@ class SubstitutionEditor {
         e.stopPropagation();
         const connected = navigator.onLine;
         if (connected) {
-          // Online: open LLM substitution prompt
+          // Online: open LLM substitution prompt inline below this row
           this.activeRowIndex = i;
+          this._setSaveDisabled(true);
           wrap.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
           row.classList.add('selected');
-          wrap.querySelector('.substitution-prompt-area').style.display = 'block';
-          wrap.querySelector('.substitution-result-area').style.display = 'none';
-          wrap.querySelector('.substitution-prompt-input').value = '';
-          wrap.querySelector('.substitution-prompt-input').focus();
+          // Move panels inline after this row
+          this._hideInlinePanels();
+          row.after(this._promptEl);
+          this._promptEl.style.display = 'block';
+          this._promptEl.querySelector('.substitution-prompt-input').value = '';
+          this._promptEl.querySelector('.substitution-prompt-input').focus();
         } else {
           // Offline: open inline manual edit
           this.openManualEdit(i);
@@ -195,13 +220,30 @@ class SubstitutionEditor {
     });
 
     wrap.querySelector('.back-btn').addEventListener('click', () => this.close());
-    wrap.querySelector('.substitution-prompt-submit').addEventListener('click', () => this.submitPrompt());
-    wrap.querySelector('.substitution-prompt-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') this.submitPrompt();
-    });
-    wrap.querySelector('.accept-substitution-btn').addEventListener('click', () => this.acceptSubstitution());
-    wrap.querySelector('.reject-substitution-btn').addEventListener('click', () => this.rejectSubstitution());
     wrap.querySelector('.save-recipe-btn').addEventListener('click', () => this.saveRecipe());
+  }
+
+  /** Hide and detach all inline panels from the DOM */
+  _hideInlinePanels() {
+    if (this._promptEl) { this._promptEl.style.display = 'none'; this._promptEl.remove(); }
+    if (this._resultEl) { this._resultEl.style.display = 'none'; this._resultEl.remove(); }
+    if (this._loadingEl) { this._loadingEl.style.display = 'none'; this._loadingEl.remove(); }
+  }
+
+  /** Enable or disable the Save Recipe button */
+  _setSaveDisabled(disabled) {
+    const btn = this.container && this.container.querySelector('.save-recipe-btn');
+    if (btn) {
+      btn.disabled = disabled;
+      btn.classList.toggle('disabled', disabled);
+    }
+  }
+
+  /** Smoothly scroll an element into view */
+  _scrollIntoView(el) {
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    }
   }
 
   close() {
@@ -223,14 +265,14 @@ class SubstitutionEditor {
    */
   openManualEdit(index) {
     this.activeRowIndex = index;
+    this._setSaveDisabled(true);
     // Highlight the selected row, deselect others
     this.container.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
     const row = this.container.querySelector(`.substitution-row[data-index="${index}"]`);
     if (!row) return;
     row.classList.add('selected');
-    // Hide LLM prompt/result areas
-    this.container.querySelector('.substitution-prompt-area').style.display = 'none';
-    this.container.querySelector('.substitution-result-area').style.display = 'none';
+    // Hide any inline LLM panels
+    this._hideInlinePanels();
     // Replace ingredient text with an editable input
     const span = row.querySelector('.substitution-row-ingredient');
     const currentText = this.ingredients[index];
@@ -258,6 +300,9 @@ class SubstitutionEditor {
       btn.classList.remove('confirm-edit');
       row.classList.remove('selected');
       this.activeRowIndex = null;
+      this._setSaveDisabled(false);
+      // Scroll to save button after manual confirm
+      this._scrollIntoView(this.container.querySelector('.save-recipe-btn'));
       // Remove the one-time confirm handler so the original click handler works again
       btn.removeEventListener('click', confirmEdit);
     };
@@ -279,7 +324,7 @@ class SubstitutionEditor {
       alert('No internet connection. LLM-powered substitution is unavailable. Use the pencil icon to manually edit ingredients.');
       return;
     }
-    const input = this.container.querySelector('.substitution-prompt-input');
+    const input = this._promptEl.querySelector('.substitution-prompt-input');
     const prompt = (input.value || '').trim();
     if (!prompt) return;
     const config = getMCPConfig();
@@ -287,9 +332,12 @@ class SubstitutionEditor {
       alert('MCP not configured. Set window.RECIPES_MCP_CONFIG = { apiEndpoint, apiKey }.');
       return;
     }
-    this.container.querySelector('.substitution-prompt-area').style.display = 'none';
-    this.container.querySelector('.substitution-result-area').style.display = 'none';
-    this.container.querySelector('.substitution-loading').style.display = 'block';
+    const activeRow = this.container.querySelector(`.substitution-row[data-index="${this.activeRowIndex}"]`);
+    // Hide prompt, show loading inline below the row
+    this._promptEl.style.display = 'none';
+    this._resultEl.style.display = 'none';
+    this._loadingEl.style.display = 'block';
+    if (activeRow) activeRow.after(this._loadingEl);
     try {
       const result = await fetchSubstitutions(
         this.recipe,
@@ -299,9 +347,9 @@ class SubstitutionEditor {
       this.pendingSubstitutions = result.substitutions;
       this.pendingExplanation = result.explanation;
       this.pendingSelectedIndex = 0;
-      this.container.querySelector('.substitution-loading').style.display = 'none';
-      this.container.querySelector('.substitution-explanation').textContent = result.explanation;
-      const optionsList = this.container.querySelector('.substitution-options-list');
+      this._loadingEl.style.display = 'none';
+      this._resultEl.querySelector('.substitution-explanation').textContent = result.explanation;
+      const optionsList = this._resultEl.querySelector('.substitution-options-list');
       optionsList.innerHTML = '';
       result.substitutions.forEach((ing, i) => {
         const btn = document.createElement('button');
@@ -317,10 +365,15 @@ class SubstitutionEditor {
         });
         optionsList.appendChild(btn);
       });
-      this.container.querySelector('.substitution-result-area').style.display = 'block';
+      // Show result inline below the row
+      this._resultEl.style.display = 'block';
+      if (activeRow) activeRow.after(this._resultEl);
+      // Scroll to the result options
+      this._scrollIntoView(this._resultEl);
     } catch (err) {
-      this.container.querySelector('.substitution-loading').style.display = 'none';
-      this.container.querySelector('.substitution-prompt-area').style.display = 'block';
+      this._loadingEl.style.display = 'none';
+      this._promptEl.style.display = 'block';
+      if (activeRow) activeRow.after(this._promptEl);
       alert(err.message || 'Failed to get substitutions');
     }
   }
@@ -333,12 +386,14 @@ class SubstitutionEditor {
     this.pendingSubstitutions = null;
     this.pendingExplanation = null;
     this.pendingSelectedIndex = 0;
-    this.container.querySelector('.substitution-result-area').style.display = 'none';
+    this._hideInlinePanels();
     const row = this.container.querySelector(`.substitution-row[data-index="${this.activeRowIndex}"]`);
     if (row) row.querySelector('.substitution-row-ingredient').textContent = replacement;
     this.activeRowIndex = null;
     this.container.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
-    this.container.querySelector('.substitution-prompt-area').style.display = 'none';
+    this._setSaveDisabled(false);
+    // Scroll to save button after accepting substitution
+    this._scrollIntoView(this.container.querySelector('.save-recipe-btn'));
   }
 
   rejectSubstitution() {
@@ -346,9 +401,9 @@ class SubstitutionEditor {
     this.pendingExplanation = null;
     this.pendingSelectedIndex = 0;
     this.activeRowIndex = null;
-    this.container.querySelector('.substitution-result-area').style.display = 'none';
+    this._hideInlinePanels();
     this.container.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
-    this.container.querySelector('.substitution-prompt-area').style.display = 'none';
+    this._setSaveDisabled(false);
   }
 
   async saveRecipe() {
