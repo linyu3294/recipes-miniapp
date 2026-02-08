@@ -6,7 +6,7 @@ db.version(1).stores({
   pantry: '++id, ingredient',
   preferences: '++id, preference',
   contextHistory: '++id, date',
-  likeDislike: 'id, title, status',
+  recipeLibrary: 'id, title, status',
   ingredients: '++id, name, frequency'
 });
 
@@ -18,7 +18,6 @@ class RecipesMiniApp {
     this.staticSubstitutions = [];
     this.preferences = [];
     this.contextHistory = [];
-    this.likeDislike = [];
     this.pantryManager = new PantryManager();
   }
 
@@ -44,40 +43,40 @@ class RecipesMiniApp {
       .toArray();
   }
 
-  async saveLikeDislike(recipeId, recipeTitle, status) {
+  async saveToLibrary(recipeId, recipeTitle, status) {
     if (recipeId == null || recipeId === '') {
-      throw new Error('Recipe ID is required to save like/dislike');
+      throw new Error('Recipe ID is required to save to library');
     }
     const title =
       (recipeTitle != null && String(recipeTitle).trim() !== '')
         ? String(recipeTitle).trim()
         : 'Untitled';
     try {
-      await db.likeDislike.put({
+      await db.recipeLibrary.put({
         id: recipeId,
         title,
         status: status
       });
       console.log(`✓ Saved ${status} for recipe: ${title}`);
     } catch (error) {
-      console.error('Error saving like/dislike:', error);
+      console.error('Error saving to library:', error);
       throw error;
     }
   }
 
-  async getLikeDislikeStatus(recipeId) {
+  async getLibraryStatus(recipeId) {
     try {
-      const entry = await db.likeDislike.get(recipeId);
+      const entry = await db.recipeLibrary.get(recipeId);
       return entry ? entry.status : null;
     } catch (error) {
-      console.error('Error getting like/dislike status:', error);
+      console.error('Error getting library status:', error);
       return null;
     }
   }
 
   async getDislikedRecipeIds() {
     try {
-      const disliked = await db.likeDislike
+      const disliked = await db.recipeLibrary
         .where('status')
         .equals('dislike')
         .toArray();
@@ -85,6 +84,25 @@ class RecipesMiniApp {
     } catch (error) {
       console.error('Error getting disliked recipes:', error);
       return new Set();
+    }
+  }
+
+  async removeFromLibrary(recipeId) {
+    try {
+      await db.recipeLibrary.delete(recipeId);
+      console.log(`✓ Removed recipe ${recipeId} from library`);
+    } catch (error) {
+      console.error('Error removing from library:', error);
+      throw error;
+    }
+  }
+
+  async getLibraryEntries() {
+    try {
+      return await db.recipeLibrary.toArray();
+    } catch (error) {
+      console.error('Error getting library entries:', error);
+      return [];
     }
   }
 
@@ -100,7 +118,7 @@ class RecipesMiniApp {
   async autoLike(recipeId, title) {
     const safeTitle =
       (title != null && String(title).trim() !== '') ? String(title).trim() : 'Untitled';
-    await db.likeDislike.put({ id: recipeId, title: safeTitle, status: 'like' });
+    await db.recipeLibrary.put({ id: recipeId, title: safeTitle, status: 'like' });
   }
 
   /**
@@ -231,8 +249,110 @@ const setupNavigation = () => {
       if (targetTab === 'suggestions-tab' && window.recipeEngine) {
         window.recipeEngine.loadSuggestions();
       }
+      // Load library entries when switching to library tab
+      if (targetTab === 'library-tab') {
+        loadLibrary();
+      }
     });
   });
+};
+
+const loadLibrary = async () => {
+  const container = document.getElementById('library-entries');
+  if (!container) return;
+  container.innerHTML = '<p class="text-center py-3">Loading library...</p>';
+  try {
+    const entries = await app.getLibraryEntries();
+    container.innerHTML = '';
+    if (entries.length === 0) {
+      container.innerHTML = `
+        <div class="card mb-3">
+          <div class="card-body p-4 text-center">
+            <p class="mb-0">Your library is empty. Like, dislike, or bookmark recipes to see them here.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    for (const entry of entries) {
+      // Look up full recipe for ingredients preview
+      let ingredientsPreview = '';
+      try {
+        const fullRecipe = await db.recipes.get(entry.id);
+        if (fullRecipe && fullRecipe.ingredients) {
+          const str = fullRecipe.ingredients.join(', ');
+          ingredientsPreview = str.length > 150 ? str.substring(0, 150) + '...' : str;
+        }
+      } catch (_) {}
+      // Determine status icon
+      let statusIcon = '';
+      if (entry.status === 'like') {
+        statusIcon = '<i class="bi bi-hand-thumbs-up-fill library-status-icon status-like"></i>';
+      } else if (entry.status === 'dislike') {
+        statusIcon = '<i class="bi bi-hand-thumbs-down-fill library-status-icon status-dislike"></i>';
+      } else if (entry.status === 'bookmarked') {
+        statusIcon = '<i class="bi bi-bookmark-fill library-status-icon status-bookmarked"></i>';
+      }
+      const card = document.createElement('div');
+      card.className = 'library-card card mb-3';
+      card.dataset.recipeId = entry.id;
+      const safeTitle = document.createElement('span');
+      safeTitle.textContent = entry.title || 'Untitled';
+      const safeIngredients = document.createElement('span');
+      safeIngredients.textContent = ingredientsPreview || 'No ingredients listed';
+      card.innerHTML = `
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1" style="min-width:0;">
+              <h2 class="recipe-title mb-2">${safeTitle.innerHTML}</h2>
+              <p class="recipe-ingredients mb-0">${safeIngredients.innerHTML}</p>
+            </div>
+            <div class="library-status-badge ms-2 flex-shrink-0">
+              ${statusIcon}
+            </div>
+          </div>
+          <div class="text-center mt-2">
+            <button class="expand-btn btn btn-link p-2" aria-label="View recipe">
+              <i class="bi bi-chevron-down fs-4"></i>
+            </button>
+          </div>
+        </div>
+      `;
+      // Click expand to navigate to recipe detail
+      card.querySelector('.expand-btn').addEventListener('click', async () => {
+        try {
+          const fullRecipe = await db.recipes.get(entry.id);
+          if (fullRecipe && window.recipeEngine) {
+            // Switch to suggestions tab to show detail there
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.getElementById('suggestions-tab')?.classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+              btn.classList.remove('active');
+              btn.classList.add('inactive');
+            });
+            const sugBtn = document.querySelector('.nav-btn[data-tab="suggestions-tab"]');
+            if (sugBtn) {
+              sugBtn.classList.remove('inactive');
+              sugBtn.classList.add('active');
+            }
+            window.recipeEngine.showRecipeDetail(fullRecipe);
+          }
+        } catch (err) {
+          console.error('Error loading recipe detail:', err);
+        }
+      });
+      container.appendChild(card);
+    }
+  } catch (error) {
+    console.error('Error loading library:', error);
+    container.innerHTML = `
+      <div class="card mb-3">
+        <div class="card-body p-4 text-center">
+          <p class="mb-0 text-danger">Error loading library. Please try again.</p>
+        </div>
+      </div>
+    `;
+  }
 };
 
 const setupSelectAll = () => {

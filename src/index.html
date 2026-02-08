@@ -57,12 +57,20 @@
         <!-- Recipe suggestions will be dynamically generated here -->
     </div>
 </div>
-   
+
+    <div id="library-tab" class="tab-content">
+        <div class="header-section">
+            <h1>Library</h1>
+        </div>
+        <div id="library-entries" class="library-entries-list">
+            <!-- Dynamically populated -->
+        </div>
+    </div>
 
     <div class="nav-buttons">
         <button class="nav-btn active" data-tab="pantry-tab">Pantry</button>
         <button class="nav-btn inactive" data-tab="suggestions-tab">Suggestions</button>
-        <button class="nav-btn inactive" data-tab="admin-search-tab">Admin Search</button>
+        <button class="nav-btn inactive nav-btn-icon" data-tab="library-tab" aria-label="Library"><i class="bi bi-book"></i></button>
     </div>
 
 </body>

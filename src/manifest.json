@@ -30,7 +30,7 @@
       "pantry": "++id, ingredient",
       "preferences": "++id, preference",
       "contextHistory": "++id, date",
-      "likeDislike": "id, title",
+      "recipeLibrary": "id, title, status",
       "ingredients": "++id, name, frequency"
     },
     "initialData": {

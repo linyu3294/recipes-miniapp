@@ -360,7 +360,7 @@ class RecipeSuggestionEngine {
     const { recipe, primaryMatches, secondaryMatches, totalSelected } = scoredRecipe;
     
     // Check if recipe is liked
-    const likeStatus = await window.app.getLikeDislikeStatus(recipe.id);
+    const likeStatus = await window.app.getLibraryStatus(recipe.id);
     const isLiked = likeStatus === 'like';
     
     const card = document.createElement('div');
@@ -390,9 +390,6 @@ class RecipeSuggestionEngine {
           <div class="col-2 d-flex flex-column align-items-center justify-content-start gap-2">
             <button class="${likeBtnClass}" aria-label="Like recipe">
               <i class="bi bi-hand-thumbs-up-fill fs-4"></i>
-            </button>
-            <button class="action-btn hide-btn btn btn-link p-2" aria-label="Hide recipe">
-              <i class="bi bi-eye-slash fs-4"></i>
             </button>
             <button class="action-btn dislike-btn btn btn-link p-2" aria-label="Dislike recipe">
               <i class="bi bi-hand-thumbs-down-fill fs-4"></i>
@@ -440,13 +437,13 @@ class RecipeSuggestionEngine {
       e.stopPropagation();
       e.preventDefault();
       try {
-        const currentStatus = await window.app.getLikeDislikeStatus(recipe.id);
+        const currentStatus = await window.app.getLibraryStatus(recipe.id);
         if (currentStatus === 'like') {
-          await window.db.likeDislike.delete(recipe.id);
+          await window.app.removeFromLibrary(recipe.id);
           likeBtn.classList.remove('active');
           console.log(`✓ Removed like for recipe: ${recipe.title}`);
         } else {
-          await window.app.saveLikeDislike(recipe.id, recipe?.title ?? 'Untitled', 'like');
+          await window.app.saveToLibrary(recipe.id, recipe?.title ?? 'Untitled', 'like');
           likeBtn.classList.add('active');
         }
       } catch (error) {
@@ -461,7 +458,7 @@ class RecipeSuggestionEngine {
       e.stopPropagation();
       e.preventDefault();
       try {
-        await window.app.saveLikeDislike(recipe.id, recipe?.title ?? 'Untitled', 'dislike');
+        await window.app.saveToLibrary(recipe.id, recipe?.title ?? 'Untitled', 'dislike');
         // Only remove card after save succeeded
         card.style.transition = 'all 0.3s';
         card.style.opacity = '0';
@@ -522,12 +519,17 @@ class RecipeSuggestionEngine {
     }
   }
 
-  showRecipeDetail(recipe) {
+  async showRecipeDetail(recipe) {
     const container = document.getElementById('recipe-suggestions');
     if (!container) return;
     const ingredients = recipe.ingredients || [];
     const instructions = recipe.instructions || 'No instructions available';
     const isConnected = navigator.onLine;
+    // Check bookmark status
+    const libraryStatus = await window.app.getLibraryStatus(recipe.id);
+    const isBookmarked = libraryStatus === 'bookmarked';
+    const bookmarkIcon = isBookmarked ? 'bi-bookmark-fill' : 'bi-bookmark';
+    const bookmarkActiveClass = isBookmarked ? ' active' : '';
     container.innerHTML = `
       <div class="recipe-detail-view">
         <div class="recipe-detail-header d-flex align-items-center justify-content-between gap-2">
@@ -542,7 +544,7 @@ class RecipeSuggestionEngine {
           <div class="recipe-detail-actions d-flex gap-1">
             <button type="button" class="fork-btn btn btn-link p-2" aria-label="Fork recipe"><i class="bi bi-diagram-3 fs-5"></i></button>
             <button type="button" class="edit-btn btn btn-link p-2" aria-label="Edit recipe"><i class="bi bi-pencil fs-5"></i></button>
-            <button type="button" class="bookmark-btn btn btn-link p-2" aria-label="Bookmark" disabled><i class="bi bi-bookmark fs-5"></i></button>
+            <button type="button" class="bookmark-btn btn btn-link p-2${bookmarkActiveClass}" aria-label="Bookmark"><i class="bi ${bookmarkIcon} fs-5"></i></button>
           </div>
         </div>
         <div class="recipe-detail-body mt-3">
@@ -601,6 +603,24 @@ class RecipeSuggestionEngine {
     });
     container.querySelector('.edit-btn').addEventListener('click', () => {
       if (window.substitutionEditor) window.substitutionEditor.open(recipe, false);
+    });
+    // Bookmark toggle handler
+    container.querySelector('.bookmark-btn').addEventListener('click', async () => {
+      const btn = container.querySelector('.bookmark-btn');
+      try {
+        const currentStatus = await window.app.getLibraryStatus(recipe.id);
+        if (currentStatus === 'bookmarked') {
+          await window.app.removeFromLibrary(recipe.id);
+          btn.querySelector('i').className = 'bi bi-bookmark fs-5';
+          btn.classList.remove('active');
+        } else {
+          await window.app.saveToLibrary(recipe.id, recipe?.title ?? 'Untitled', 'bookmarked');
+          btn.querySelector('i').className = 'bi bi-bookmark-fill fs-5';
+          btn.classList.add('active');
+        }
+      } catch (error) {
+        console.error('Error toggling bookmark:', error);
+      }
     });
   }
 

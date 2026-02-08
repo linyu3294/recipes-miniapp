@@ -627,8 +627,17 @@ h1 {
 }
 
 .recipe-detail-header .bookmark-btn {
-  color: #999;
-  cursor: default;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.recipe-detail-header .bookmark-btn.active {
+  color: #00bfa5;
+}
+
+.recipe-detail-header .bookmark-btn.active i {
+  color: #00bfa5;
 }
 
 .recipe-detail-title {
@@ -986,4 +995,77 @@ h1 {
 .substitution-row-prompt-btn.confirm-edit:hover {
   background: #009688;
   border-color: #009688;
+}
+
+/* ---------------------------------- Library Tab ---------------------------------- */
+
+.library-entries-list {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.library-card {
+  transition: all 0.3s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.library-card .card-body {
+  background-color: white;
+  padding: 20px;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
+}
+
+.library-card .recipe-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.library-card .recipe-ingredients {
+  font-size: 15px;
+  color: #666;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.library-status-badge {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.library-status-icon {
+  font-size: 22px;
+}
+
+.library-status-icon.status-like {
+  color: #00bfa5;
+}
+
+.library-status-icon.status-dislike {
+  color: #00bfa5;
+}
+
+.library-status-icon.status-bookmarked {
+  color: #00bfa5;
+}
+
+/* Nav button icon-only style (for Library book icon) */
+.nav-btn.nav-btn-icon {
+  padding: 14px 20px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-btn.nav-btn-icon::before {
+  content: none;
 }
