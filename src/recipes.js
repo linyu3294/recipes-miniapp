@@ -527,10 +527,17 @@ class RecipeSuggestionEngine {
     if (!container) return;
     const ingredients = recipe.ingredients || [];
     const instructions = recipe.instructions || 'No instructions available';
+    const isConnected = navigator.onLine;
     container.innerHTML = `
       <div class="recipe-detail-view">
         <div class="recipe-detail-header d-flex align-items-center justify-content-between gap-2">
           <button type="button" class="back-btn btn btn-link p-0" aria-label="Back"><i class="bi bi-arrow-left fs-4"></i></button>
+          <div class="wifi-status-group">
+            <i class="bi ${isConnected ? 'bi-wifi' : 'bi-wifi-off'} wifi-icon${isConnected ? '' : ' offline'}"></i>
+            <button type="button" class="wifi-tooltip-btn btn btn-link p-0" style="display: ${isConnected ? 'none' : 'inline-flex'}" aria-label="Connection info">
+              <i class="bi bi-info-circle"></i>
+            </button>
+          </div>
           <h2 class="recipe-detail-title flex-grow-1 mb-0 text-center">${this.escapeHtml(recipe.title || 'Untitled')}</h2>
           <div class="recipe-detail-actions d-flex gap-1">
             <button type="button" class="fork-btn btn btn-link p-2" aria-label="Fork recipe"><i class="bi bi-diagram-3 fs-5"></i></button>
@@ -548,6 +555,46 @@ class RecipeSuggestionEngine {
         </div>
       </div>
     `;
+
+    // Connectivity status: dynamic updates via online/offline events
+    const updateConnectivity = () => {
+      const on = navigator.onLine;
+      const icon = container.querySelector('.wifi-icon');
+      const tooltipBtn = container.querySelector('.wifi-tooltip-btn');
+      if (icon) {
+        icon.className = `bi ${on ? 'bi-wifi' : 'bi-wifi-off'} wifi-icon${on ? '' : ' offline'}`;
+      }
+      if (tooltipBtn) {
+        tooltipBtn.style.display = on ? 'none' : 'inline-flex';
+      }
+    };
+    window.addEventListener('online', updateConnectivity);
+    window.addEventListener('offline', updateConnectivity);
+    this._detailWifiCleanup = () => {
+      window.removeEventListener('online', updateConnectivity);
+      window.removeEventListener('offline', updateConnectivity);
+    };
+
+    // WiFi tooltip popover toggle
+    const tooltipBtn = container.querySelector('.wifi-tooltip-btn');
+    if (tooltipBtn) {
+      tooltipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        let popover = container.querySelector('.wifi-tooltip-popover');
+        if (popover) {
+          popover.remove();
+          return;
+        }
+        popover = document.createElement('div');
+        popover.className = 'wifi-tooltip-popover';
+        popover.textContent = 'No internet connection. LLM-powered substitution is unavailable. You can still manually edit ingredients.';
+        tooltipBtn.style.position = 'relative';
+        tooltipBtn.appendChild(popover);
+        // Auto-dismiss after 4 seconds
+        setTimeout(() => { if (popover.parentNode) popover.remove(); }, 4000);
+      });
+    }
+
     container.querySelector('.back-btn').addEventListener('click', () => this.loadSuggestions());
     container.querySelector('.fork-btn').addEventListener('click', () => {
       if (window.substitutionEditor) window.substitutionEditor.open(recipe, true);
@@ -558,6 +605,11 @@ class RecipeSuggestionEngine {
   }
 
   async loadSuggestions() {
+    // Clean up WiFi event listeners from detail view
+    if (this._detailWifiCleanup) {
+      this._detailWifiCleanup();
+      this._detailWifiCleanup = null;
+    }
     const container = document.getElementById('recipe-suggestions');
     if (container) {
       // Show loading state

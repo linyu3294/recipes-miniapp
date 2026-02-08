@@ -288,8 +288,9 @@ const setupRemoveButtons = () => {
 };
 
 const initApp = () => {
-  const container = document.getElementById('app-container');
-  if (!container || !container.querySelector('.nav-btn')) {
+  // Look for nav buttons in #app-container first, then fall back to document body
+  const container = document.getElementById('app-container') || document.body;
+  if (!container.querySelector('.nav-btn')) {
     setTimeout(initApp, 50);
     return;
   }

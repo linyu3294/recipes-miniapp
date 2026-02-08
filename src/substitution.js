@@ -70,6 +70,7 @@ class SubstitutionEditor {
     this.pendingSubstitutions = null;
     this.pendingExplanation = null;
     this.pendingSelectedIndex = 0;
+    this._wifiCleanup = null;
   }
 
   open(recipe, isFork) {
@@ -89,11 +90,17 @@ class SubstitutionEditor {
     parent.innerHTML = '';
     const wrap = document.createElement('div');
     wrap.className = 'substitution-editor-view';
+    const isConnected = navigator.onLine;
     wrap.innerHTML = `
       <div class="substitution-editor-header d-flex align-items-center justify-content-between gap-2">
         <button type="button" class="back-btn btn btn-link p-0" aria-label="Back"><i class="bi bi-arrow-left fs-4"></i></button>
         <h2 class="substitution-editor-title mb-0 flex-grow-1 text-center">${escapeHtml(this.recipe.title || 'Recipe')} — ${this.isFork ? 'Fork' : 'Edit'}</h2>
-        <span style="width: 34px;" aria-hidden="true"></span>
+        <div class="wifi-status-group">
+          <i class="bi ${isConnected ? 'bi-wifi' : 'bi-wifi-off'} wifi-icon${isConnected ? '' : ' offline'}"></i>
+          <button type="button" class="wifi-tooltip-btn btn btn-link p-0" style="display: ${isConnected ? 'none' : 'inline-flex'}" aria-label="Connection info">
+            <i class="bi bi-info-circle"></i>
+          </button>
+        </div>
       </div>
       <div class="substitution-ingredients-list"></div>
       <div class="substitution-prompt-area" style="display: none;">
@@ -120,6 +127,44 @@ class SubstitutionEditor {
     this.container = wrap;
     parent.appendChild(wrap);
 
+    // Connectivity status: dynamic updates via online/offline events
+    const updateConnectivity = () => {
+      const on = navigator.onLine;
+      const icon = wrap.querySelector('.wifi-icon');
+      const tooltipBtn = wrap.querySelector('.wifi-tooltip-btn');
+      if (icon) {
+        icon.className = `bi ${on ? 'bi-wifi' : 'bi-wifi-off'} wifi-icon${on ? '' : ' offline'}`;
+      }
+      if (tooltipBtn) {
+        tooltipBtn.style.display = on ? 'none' : 'inline-flex';
+      }
+    };
+    window.addEventListener('online', updateConnectivity);
+    window.addEventListener('offline', updateConnectivity);
+    this._wifiCleanup = () => {
+      window.removeEventListener('online', updateConnectivity);
+      window.removeEventListener('offline', updateConnectivity);
+    };
+
+    // WiFi tooltip popover toggle
+    const tooltipBtn = wrap.querySelector('.wifi-tooltip-btn');
+    if (tooltipBtn) {
+      tooltipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        let popover = wrap.querySelector('.wifi-tooltip-popover');
+        if (popover) {
+          popover.remove();
+          return;
+        }
+        popover = document.createElement('div');
+        popover.className = 'wifi-tooltip-popover';
+        popover.textContent = 'No internet connection. LLM-powered substitution is unavailable. You can still manually edit ingredients using the pencil icon.';
+        tooltipBtn.style.position = 'relative';
+        tooltipBtn.appendChild(popover);
+        setTimeout(() => { if (popover.parentNode) popover.remove(); }, 4000);
+      });
+    }
+
     const listEl = wrap.querySelector('.substitution-ingredients-list');
     this.ingredients.forEach((ing, i) => {
       const row = document.createElement('div');
@@ -131,13 +176,20 @@ class SubstitutionEditor {
       `;
       row.querySelector('.substitution-row-prompt-btn').addEventListener('click', (e) => {
         e.stopPropagation();
-        this.activeRowIndex = i;
-        wrap.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
-        row.classList.add('selected');
-        wrap.querySelector('.substitution-prompt-area').style.display = 'block';
-        wrap.querySelector('.substitution-result-area').style.display = 'none';
-        wrap.querySelector('.substitution-prompt-input').value = '';
-        wrap.querySelector('.substitution-prompt-input').focus();
+        const connected = navigator.onLine;
+        if (connected) {
+          // Online: open LLM substitution prompt
+          this.activeRowIndex = i;
+          wrap.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
+          row.classList.add('selected');
+          wrap.querySelector('.substitution-prompt-area').style.display = 'block';
+          wrap.querySelector('.substitution-result-area').style.display = 'none';
+          wrap.querySelector('.substitution-prompt-input').value = '';
+          wrap.querySelector('.substitution-prompt-input').focus();
+        } else {
+          // Offline: open inline manual edit
+          this.openManualEdit(i);
+        }
       });
       listEl.appendChild(row);
     });
@@ -153,14 +205,80 @@ class SubstitutionEditor {
   }
 
   close() {
+    // Clean up WiFi event listeners
+    if (this._wifiCleanup) {
+      this._wifiCleanup();
+      this._wifiCleanup = null;
+    }
     if (window.recipeEngine) {
       document.getElementById('recipe-suggestions').innerHTML = '';
       window.recipeEngine.loadSuggestions();
     }
   }
 
+  /**
+   * Open inline manual edit for an ingredient row (used when WiFi is off).
+   * Replaces the ingredient text with an input field and the pencil button with a checkmark.
+   * @param {number} index - Index of the ingredient to edit
+   */
+  openManualEdit(index) {
+    this.activeRowIndex = index;
+    // Highlight the selected row, deselect others
+    this.container.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
+    const row = this.container.querySelector(`.substitution-row[data-index="${index}"]`);
+    if (!row) return;
+    row.classList.add('selected');
+    // Hide LLM prompt/result areas
+    this.container.querySelector('.substitution-prompt-area').style.display = 'none';
+    this.container.querySelector('.substitution-result-area').style.display = 'none';
+    // Replace ingredient text with an editable input
+    const span = row.querySelector('.substitution-row-ingredient');
+    const currentText = this.ingredients[index];
+    span.innerHTML = '';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'manual-edit-input form-control form-control-sm';
+    input.value = currentText;
+    span.appendChild(input);
+    input.focus();
+    input.select();
+    // Change pencil button to a checkmark for confirmation
+    const btn = row.querySelector('.substitution-row-prompt-btn');
+    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    btn.classList.add('confirm-edit');
+    const confirmEdit = (e) => {
+      e.stopPropagation();
+      const newVal = input.value.trim();
+      if (newVal) {
+        this.ingredients[index] = newVal;
+      }
+      // Restore the row to display mode
+      span.textContent = this.ingredients[index];
+      btn.innerHTML = '<i class="bi bi-pencil-square"></i>';
+      btn.classList.remove('confirm-edit');
+      row.classList.remove('selected');
+      this.activeRowIndex = null;
+      // Remove the one-time confirm handler so the original click handler works again
+      btn.removeEventListener('click', confirmEdit);
+    };
+    // Use capture to intercept before the original handler
+    btn.addEventListener('click', confirmEdit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        confirmEdit(e);
+      }
+    });
+  }
+
   async submitPrompt() {
     if (this.activeRowIndex == null) return;
+    // Guard: prevent LLM calls when there is no internet connectivity
+    const connected = navigator.onLine;
+    if (!connected) {
+      alert('No internet connection. LLM-powered substitution is unavailable. Use the pencil icon to manually edit ingredients.');
+      return;
+    }
     const input = this.container.querySelector('.substitution-prompt-input');
     const prompt = (input.value || '').trim();
     if (!prompt) return;

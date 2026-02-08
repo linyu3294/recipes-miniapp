@@ -883,3 +883,107 @@ h1 {
   background: #1a1a1a;
   border-color: #1a1a1a;
 }
+
+/* ---------------------------------- WiFi Status Indicator ---------------------------------- */
+
+/* WiFi status group: layout container for icon + tooltip */
+.wifi-status-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* WiFi icon base style */
+.wifi-icon {
+  font-size: 18px;
+  color: #1a1a1a;
+  transition: color 0.2s;
+}
+
+/* WiFi icon offline state */
+.wifi-icon.offline {
+  color: #d32f2f;
+}
+
+/* Tooltip info button */
+.wifi-tooltip-btn {
+  color: #d32f2f;
+  font-size: 16px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s;
+  position: relative;
+}
+
+.wifi-tooltip-btn:hover {
+  color: #b71c1c;
+}
+
+/* Tooltip popover message */
+.wifi-tooltip-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  width: 220px;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
+}
+
+.wifi-tooltip-popover::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #333;
+}
+
+/* Manual edit inline input */
+.manual-edit-input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+  background: white;
+  border: 2px solid #00bfa5;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.manual-edit-input:focus {
+  outline: none;
+  border-color: #009688;
+}
+
+/* Confirm button style when in manual edit mode */
+.substitution-row-prompt-btn.confirm-edit {
+  background: #00bfa5;
+  border-color: #00bfa5;
+  color: white;
+}
+
+.substitution-row-prompt-btn.confirm-edit:hover {
+  background: #009688;
+  border-color: #009688;
+}
