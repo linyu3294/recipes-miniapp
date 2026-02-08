@@ -522,6 +522,11 @@ class RecipeSuggestionEngine {
   async showRecipeDetail(recipe) {
     const container = document.getElementById('recipe-suggestions');
     if (!container) return;
+    // Hide search bar and results when viewing detail
+    const searchInput = document.getElementById('recipe-search');
+    const searchResults = document.getElementById('recipe-search-results');
+    if (searchInput) searchInput.style.display = 'none';
+    if (searchResults) searchResults.style.display = 'none';
     const ingredients = recipe.ingredients || [];
     const instructions = recipe.instructions || 'No instructions available';
     const isConnected = navigator.onLine;
@@ -630,7 +635,13 @@ class RecipeSuggestionEngine {
       this._detailWifiCleanup();
       this._detailWifiCleanup = null;
     }
+    // Restore search bar visibility
+    const searchInput = document.getElementById('recipe-search');
+    const searchResults = document.getElementById('recipe-search-results');
+    if (searchInput) { searchInput.style.display = ''; searchInput.value = ''; }
+    if (searchResults) { searchResults.style.display = 'none'; searchResults.innerHTML = ''; }
     const container = document.getElementById('recipe-suggestions');
+    if (container) container.style.display = '';
     if (container) {
       // Show loading state
       container.innerHTML = `
@@ -663,6 +674,169 @@ class RecipeSuggestionEngine {
 // Initialize the recipe suggestion engine
 const recipeEngine = new RecipeSuggestionEngine();
 window.recipeEngine = recipeEngine;
+
+/**
+ * Recipe Title Search
+ * Splits query into terms, fuzzy-matches each term against recipe titles,
+ * ranks results by how many terms match (all-match first), then by match quality.
+ */
+const RECIPE_SEARCH_DEBOUNCE = 200;
+const RECIPE_SEARCH_MAX_RESULTS = 15;
+const RECIPE_SEARCH_MAX_SCAN = 1000;
+
+/**
+ * Score how well a single search term matches a title string.
+ * Returns 0 if no match, higher is better.
+ */
+function scoreTermMatch(term, titleLower) {
+  if (titleLower === term) return 1.0;
+  if (titleLower.startsWith(term)) return 0.9;
+  if (titleLower.includes(term)) return 0.8;
+  // Word-boundary match: any word in the title starts with the term
+  const words = titleLower.split(/\s+/);
+  for (const w of words) {
+    if (w.startsWith(term)) return 0.7;
+  }
+  // Fuzzy: subsequence match
+  let si = 0;
+  for (let ti = 0; ti < titleLower.length && si < term.length; ti++) {
+    if (term[si] === titleLower[ti]) si++;
+  }
+  const ratio = si / term.length;
+  return ratio >= 0.6 ? ratio * 0.5 : 0;
+}
+
+/**
+ * Score a recipe title against an array of search terms.
+ * Returns { matchedCount, totalScore } where matchedCount is how many terms had a non-zero score.
+ */
+function scoreRecipeTitle(terms, titleLower) {
+  let matchedCount = 0;
+  let totalScore = 0;
+  for (const term of terms) {
+    const s = scoreTermMatch(term, titleLower);
+    if (s > 0) {
+      matchedCount++;
+      totalScore += s;
+    }
+  }
+  return { matchedCount, totalScore };
+}
+
+async function searchRecipesByTitle(query) {
+  if (!query || !query.trim()) return [];
+  const terms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+  if (terms.length === 0) return [];
+
+  try {
+    const recipes = await window.db.recipes
+      .limit(RECIPE_SEARCH_MAX_SCAN)
+      .toArray();
+
+    const scored = [];
+    for (const recipe of recipes) {
+      if (!recipe.title) continue;
+      const titleLower = recipe.title.toLowerCase();
+      const { matchedCount, totalScore } = scoreRecipeTitle(terms, titleLower);
+      if (matchedCount > 0) {
+        scored.push({ recipe, matchedCount, totalScore, totalTerms: terms.length });
+      }
+    }
+
+    // Sort: most terms matched first, then by total score
+    scored.sort((a, b) => {
+      if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
+      return b.totalScore - a.totalScore;
+    });
+
+    return scored.slice(0, RECIPE_SEARCH_MAX_RESULTS);
+  } catch (err) {
+    console.error('Error searching recipes by title:', err);
+    return [];
+  }
+}
+
+function initRecipeSearch() {
+  const searchInput = document.getElementById('recipe-search');
+  const resultsContainer = document.getElementById('recipe-search-results');
+  const suggestionsContainer = document.getElementById('recipe-suggestions');
+  if (!searchInput || !resultsContainer) return;
+
+  let debounceTimer = null;
+
+  const escapeHtml = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
+  const highlightTerms = (title, query) => {
+    const terms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+    let html = escapeHtml(title);
+    for (const term of terms) {
+      const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      html = html.replace(regex, '<mark>$1</mark>');
+    }
+    return html;
+  };
+
+  const renderSearchResults = (results, query) => {
+    resultsContainer.innerHTML = '';
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<div class="recipe-search-no-results">No recipes found.</div>';
+      resultsContainer.style.display = 'block';
+      return;
+    }
+    for (const { recipe, matchedCount, totalTerms } of results) {
+      const item = document.createElement('div');
+      item.className = 'recipe-search-item';
+      const matchLabel = totalTerms > 1 ? ` <span class="recipe-search-match-count">(${matchedCount}/${totalTerms} terms)</span>` : '';
+      const ingredientsStr = (recipe.ingredients || []).join(', ');
+      const preview = ingredientsStr.length > 100 ? ingredientsStr.substring(0, 100) + '...' : ingredientsStr;
+      item.innerHTML = `
+        <div class="recipe-search-item-title">${highlightTerms(recipe.title || 'Untitled', query)}${matchLabel}</div>
+        <div class="recipe-search-item-ingredients">${escapeHtml(preview)}</div>
+      `;
+      item.addEventListener('click', () => {
+        // Navigate to recipe detail
+        searchInput.value = '';
+        resultsContainer.style.display = 'none';
+        resultsContainer.innerHTML = '';
+        if (suggestionsContainer) suggestionsContainer.style.display = '';
+        recipeEngine.showRecipeDetail(recipe);
+      });
+      resultsContainer.appendChild(item);
+    }
+    resultsContainer.style.display = 'block';
+  };
+
+  searchInput.addEventListener('input', () => {
+    const query = searchInput.value.trim();
+    if (debounceTimer) clearTimeout(debounceTimer);
+
+    if (query.length === 0) {
+      resultsContainer.style.display = 'none';
+      resultsContainer.innerHTML = '';
+      if (suggestionsContainer) suggestionsContainer.style.display = '';
+      return;
+    }
+
+    // Hide ingredient-based suggestions while searching
+    if (suggestionsContainer) suggestionsContainer.style.display = 'none';
+
+    debounceTimer = setTimeout(async () => {
+      const results = await searchRecipesByTitle(query);
+      renderSearchResults(results, query);
+    }, RECIPE_SEARCH_DEBOUNCE);
+  });
+}
+
+// Initialize recipe search when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => setTimeout(initRecipeSearch, 150));
+} else {
+  setTimeout(initRecipeSearch, 150);
+}
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
