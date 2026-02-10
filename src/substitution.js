@@ -1,9 +1,15 @@
 const SUBSTITUTION_SYSTEM_PROMPT = `You are a recipe ingredient substitution assistant. Given a recipe (title and ingredients), one ingredient to substitute, and the user's preference prompt, suggest 3-5 alternative ingredients.
 
 You must reply with exactly one JSON object and nothing else. No markdown, no code fences, no explanation outside the JSON.
-Format: {"substitutions": ["ingredient1", "ingredient2", "ingredient3"], "explanation": "One short paragraph explaining why these fit the recipe and the user's prompt."}
-- "substitutions": array of 3-5 strings, each a single ingredient name the user can pick.
-- "explanation": one string, short paragraph.
+
+Format:
+{"substitutions": [{"raw": "1 cup almond milk", "normalized": "almond milk"}, {"raw": "2 tbsp coconut cream", "normalized": "coconut cream"}], "explanation": "One short paragraph explaining why these fit."}
+
+Rules:
+- "substitutions": array of 3-5 objects. Each object MUST have exactly two string fields:
+  - "raw": the full ingredient with quantity as it would appear in a recipe (e.g. "2 tbsp olive oil", "1 cup skim milk"). Match the quantity/unit style of the original ingredient being replaced.
+  - "normalized": just the ingredient name without any quantity or unit (e.g. "olive oil", "skim milk").
+- "explanation": one string, a short paragraph.
 
 Output only valid JSON so the UI can parse it.`;
 
@@ -22,7 +28,20 @@ function parseSubstitutionResponse(message) {
     try {
       const parsed = JSON.parse(trimmed.slice(start));
       if (Array.isArray(parsed.substitutions) && parsed.substitutions.length > 0 && typeof parsed.explanation === 'string') {
-        return parsed;
+        // Validate and normalize: each substitution must be {raw, normalized}
+        const normalized = parsed.substitutions.map(s => {
+          if (typeof s === 'object' && s !== null && typeof s.raw === 'string' && typeof s.normalized === 'string') {
+            return { raw: s.raw, normalized: s.normalized };
+          }
+          // Fallback: if LLM returned a plain string, use it for both fields
+          if (typeof s === 'string') {
+            return { raw: s, normalized: s.toLowerCase().trim() };
+          }
+          return null;
+        }).filter(Boolean);
+        if (normalized.length > 0) {
+          return { substitutions: normalized, explanation: parsed.explanation };
+        }
       }
     } catch (_) {}
     idx = start;
@@ -76,7 +95,9 @@ class SubstitutionEditor {
   open(recipe, isFork) {
     this.recipe = recipe;
     this.isFork = !!isFork;
+    this.title = recipe.title || 'Untitled';
     this.ingredients = [...(recipe.ingredients || [])];
+    this.normalizedIngredients = [...(recipe.normalizedIngredients || (recipe.ingredients || []).map(i => (i || '').toLowerCase().trim()))];
     this.activeRowIndex = null;
     this.pendingSubstitutions = null;
     this.pendingExplanation = null;
@@ -94,7 +115,11 @@ class SubstitutionEditor {
     wrap.innerHTML = `
       <div class="substitution-editor-header d-flex align-items-center justify-content-between gap-2">
         <button type="button" class="back-btn btn btn-link p-0" aria-label="Back"><i class="bi bi-arrow-left fs-4"></i></button>
-        <h2 class="substitution-editor-title mb-0 flex-grow-1 text-center">${escapeHtml(this.recipe.title || 'Recipe')} — ${this.isFork ? 'Fork' : 'Edit'}</h2>
+        <div class="substitution-title-area flex-grow-1 text-center">
+          <span class="substitution-editor-title-text" role="button">${escapeHtml(this.title)}</span>
+          <span class="substitution-editor-title-suffix"> — ${this.isFork ? 'Fork' : 'Edit'}</span>
+          <button type="button" class="title-edit-btn btn btn-link p-0 ms-1" aria-label="Edit title"><i class="bi bi-pencil fs-6"></i></button>
+        </div>
         <div class="wifi-status-group">
           <i class="bi ${isConnected ? 'bi-wifi' : 'bi-wifi-off'} wifi-icon${isConnected ? '' : ' offline'}"></i>
           <button type="button" class="wifi-tooltip-btn btn btn-link p-0" style="display: ${isConnected ? 'none' : 'inline-flex'}" aria-label="Connection info">
@@ -186,6 +211,40 @@ class SubstitutionEditor {
         setTimeout(() => { if (popover.parentNode) popover.remove(); }, 4000);
       });
     }
+
+    // Title edit handler
+    const titleText = wrap.querySelector('.substitution-editor-title-text');
+    const titleEditBtn = wrap.querySelector('.title-edit-btn');
+    const startTitleEdit = () => {
+      const titleArea = wrap.querySelector('.substitution-title-area');
+      if (!titleArea || titleArea.querySelector('.title-edit-input')) return;
+      const currentTitle = this.title;
+      const suffix = titleArea.querySelector('.substitution-editor-title-suffix');
+      const editBtn = titleArea.querySelector('.title-edit-btn');
+      titleText.style.display = 'none';
+      if (editBtn) editBtn.style.display = 'none';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'title-edit-input form-control form-control-sm';
+      input.value = currentTitle;
+      titleArea.insertBefore(input, suffix);
+      input.focus();
+      input.select();
+      const finishEdit = () => {
+        const newTitle = input.value.trim();
+        if (newTitle) this.title = newTitle;
+        titleText.textContent = this.title;
+        titleText.style.display = '';
+        if (editBtn) editBtn.style.display = '';
+        input.remove();
+      };
+      input.addEventListener('blur', finishEdit);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      });
+    };
+    if (titleText) titleText.addEventListener('click', startTitleEdit);
+    if (titleEditBtn) titleEditBtn.addEventListener('click', startTitleEdit);
 
     const listEl = wrap.querySelector('.substitution-ingredients-list');
     this.ingredients.forEach((ing, i) => {
@@ -293,6 +352,7 @@ class SubstitutionEditor {
       const newVal = input.value.trim();
       if (newVal) {
         this.ingredients[index] = newVal;
+        this.normalizedIngredients[index] = newVal.toLowerCase().trim();
       }
       // Restore the row to display mode
       span.textContent = this.ingredients[index];
@@ -351,11 +411,11 @@ class SubstitutionEditor {
       this._resultEl.querySelector('.substitution-explanation').textContent = result.explanation;
       const optionsList = this._resultEl.querySelector('.substitution-options-list');
       optionsList.innerHTML = '';
-      result.substitutions.forEach((ing, i) => {
+      result.substitutions.forEach((sub, i) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'substitution-option-btn' + (i === 0 ? ' substitution-option-selected' : '');
-        btn.textContent = ing;
+        btn.textContent = sub.normalized;
         btn.dataset.index = String(i);
         btn.addEventListener('click', () => {
           this.pendingSelectedIndex = i;
@@ -382,13 +442,14 @@ class SubstitutionEditor {
     if (this.activeRowIndex == null || !this.pendingSubstitutions || this.pendingSubstitutions.length === 0) return;
     const idx = Math.min(this.pendingSelectedIndex, this.pendingSubstitutions.length - 1);
     const replacement = this.pendingSubstitutions[idx];
-    this.ingredients[this.activeRowIndex] = replacement;
+    this.ingredients[this.activeRowIndex] = replacement.raw;
+    this.normalizedIngredients[this.activeRowIndex] = replacement.normalized;
     this.pendingSubstitutions = null;
     this.pendingExplanation = null;
     this.pendingSelectedIndex = 0;
     this._hideInlinePanels();
     const row = this.container.querySelector(`.substitution-row[data-index="${this.activeRowIndex}"]`);
-    if (row) row.querySelector('.substitution-row-ingredient').textContent = replacement;
+    if (row) row.querySelector('.substitution-row-ingredient').textContent = replacement.raw;
     this.activeRowIndex = null;
     this.container.querySelectorAll('.substitution-row').forEach(r => r.classList.remove('selected'));
     this._setSaveDisabled(false);
@@ -407,13 +468,13 @@ class SubstitutionEditor {
   }
 
   async saveRecipe() {
-    const title = this.recipe.title || 'Untitled';
+    const title = this.title || 'Untitled';
     const instructions = this.recipe.instructions || '';
     const payload = {
       title,
       ingredients: [...this.ingredients],
       instructions,
-      normalizedIngredients: this.ingredients.map(i => i.toLowerCase().trim())
+      normalizedIngredients: [...this.normalizedIngredients]
     };
     try {
       if (!window.app) {
