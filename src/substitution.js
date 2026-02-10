@@ -117,8 +117,8 @@ class SubstitutionEditor {
         <button type="button" class="back-btn btn btn-link p-0" aria-label="Back"><i class="bi bi-arrow-left fs-4"></i></button>
         <div class="substitution-title-area flex-grow-1 text-center">
           <span class="substitution-editor-title-text" role="button">${escapeHtml(this.title)}</span>
+          <button type="button" class="title-edit-btn btn btn-link p-0" aria-label="Edit title"><i class="bi bi-pencil fs-6"></i></button>
           <span class="substitution-editor-title-suffix"> — ${this.isFork ? 'Fork' : 'Edit'}</span>
-          <button type="button" class="title-edit-btn btn btn-link p-0 ms-1" aria-label="Edit title"><i class="bi bi-pencil fs-6"></i></button>
         </div>
         <div class="wifi-status-group">
           <i class="bi ${isConnected ? 'bi-wifi' : 'bi-wifi-off'} wifi-icon${isConnected ? '' : ' offline'}"></i>

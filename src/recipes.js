@@ -368,8 +368,9 @@ class RecipeSuggestionEngine {
     card.dataset.recipeId = recipe.id;
     card.dataset.index = index;
 
-    const matchInfo = totalSelected > 0 
-      ? `${primaryMatches}/${totalSelected} ingredients matched`
+    const totalRecipeIngredients = (recipe.ingredients || []).length;
+    const matchInfo = totalRecipeIngredients > 0 
+      ? `${primaryMatches}/${totalRecipeIngredients} ingredients matched`
       : 'No match info';
 
     const likeBtnClass = isLiked ? 'action-btn like-btn btn btn-link p-2 active' : 'action-btn like-btn btn btn-link p-2';
@@ -723,7 +724,46 @@ function scoreRecipeTitle(terms, titleLower) {
   return { matchedCount, totalScore };
 }
 
-async function searchRecipesByTitle(query) {
+/**
+ * Check if any search term appears in a text string (exact substring match).
+ * Returns the list of terms that matched.
+ */
+function findMatchingTerms(terms, text) {
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  return terms.filter(t => lower.includes(t));
+}
+
+/**
+ * Build a context snippet showing where keywords appear in the body text.
+ * Format: "...context keyword context ... context keyword2 context..."
+ * @param {string} text - The full body text (ingredients joined or instructions)
+ * @param {string[]} matchedTerms - Terms that were found in the text
+ * @param {number} contextChars - Characters of context around each keyword
+ * @returns {string} The snippet string (plain text, not HTML)
+ */
+function buildContextSnippet(text, matchedTerms, contextChars) {
+  if (!text || matchedTerms.length === 0) return '';
+  const lower = text.toLowerCase();
+  const snippets = [];
+  const seen = new Set();
+  for (const term of matchedTerms) {
+    const pos = lower.indexOf(term);
+    if (pos === -1 || seen.has(term)) continue;
+    seen.add(term);
+    const start = Math.max(0, pos - contextChars);
+    const end = Math.min(text.length, pos + term.length + contextChars);
+    let snippet = '';
+    if (start > 0) snippet += '...';
+    snippet += text.substring(start, end).trim();
+    if (end < text.length) snippet += '...';
+    snippets.push(snippet);
+    if (snippets.length >= 3) break; // limit to 3 keyword contexts
+  }
+  return snippets.join('  ');
+}
+
+async function searchRecipes(query) {
   if (!query || !query.trim()) return [];
   const terms = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
   if (terms.length === 0) return [];
@@ -737,21 +777,58 @@ async function searchRecipesByTitle(query) {
     for (const recipe of recipes) {
       if (!recipe.title) continue;
       const titleLower = recipe.title.toLowerCase();
-      const { matchedCount, totalScore } = scoreRecipeTitle(terms, titleLower);
-      if (matchedCount > 0) {
-        scored.push({ recipe, matchedCount, totalScore, totalTerms: terms.length });
+      const { matchedCount: titleMatched, totalScore: titleScore } = scoreRecipeTitle(terms, titleLower);
+
+      // Also search in ingredients and instructions (body)
+      const ingredientsText = (recipe.ingredients || []).join(', ');
+      const instructionsText = recipe.instructions || '';
+      const bodyText = ingredientsText + ' ' + instructionsText;
+      const bodyMatchedTerms = findMatchingTerms(terms, bodyText);
+      const bodyMatched = bodyMatchedTerms.length;
+
+      const totalMatched = Math.max(titleMatched, bodyMatched);
+      if (totalMatched === 0) continue;
+
+      // Title hits get a bonus so they rank above body-only hits
+      const totalScore = (titleScore * 2) + (bodyMatched * 0.3);
+      const hitInTitle = titleMatched > 0;
+
+      // Build context snippet for body hits
+      let contextSnippet = '';
+      if (!hitInTitle && bodyMatched > 0) {
+        // Body-only hit: show context from whichever text had matches
+        const ingTerms = findMatchingTerms(terms, ingredientsText);
+        const insTerms = findMatchingTerms(terms, instructionsText);
+        if (ingTerms.length > 0) {
+          contextSnippet = buildContextSnippet(ingredientsText, ingTerms, 20);
+        } else if (insTerms.length > 0) {
+          contextSnippet = buildContextSnippet(instructionsText, insTerms, 25);
+        }
+      } else if (hitInTitle && bodyMatched > 0) {
+        // Title hit that also has body matches: no context needed (title is enough)
+        contextSnippet = '';
       }
+
+      scored.push({
+        recipe,
+        matchedCount: totalMatched,
+        totalScore,
+        totalTerms: terms.length,
+        hitInTitle,
+        contextSnippet
+      });
     }
 
-    // Sort: most terms matched first, then by total score
+    // Sort: title hits first, then most terms matched, then by score
     scored.sort((a, b) => {
+      if (a.hitInTitle !== b.hitInTitle) return a.hitInTitle ? -1 : 1;
       if (b.matchedCount !== a.matchedCount) return b.matchedCount - a.matchedCount;
       return b.totalScore - a.totalScore;
     });
 
     return scored.slice(0, RECIPE_SEARCH_MAX_RESULTS);
   } catch (err) {
-    console.error('Error searching recipes by title:', err);
+    console.error('Error searching recipes:', err);
     return [];
   }
 }
@@ -787,23 +864,51 @@ function initRecipeSearch() {
       resultsContainer.style.display = 'block';
       return;
     }
-    for (const { recipe, matchedCount, totalTerms } of results) {
+    for (const { recipe, hitInTitle, contextSnippet } of results) {
       const item = document.createElement('div');
       item.className = 'recipe-search-item';
-      const matchLabel = totalTerms > 1 ? ` <span class="recipe-search-match-count">(${matchedCount}/${totalTerms} terms)</span>` : '';
-      const ingredientsStr = (recipe.ingredients || []).join(', ');
-      const preview = ingredientsStr.length > 100 ? ingredientsStr.substring(0, 100) + '...' : ingredientsStr;
+      let contentHtml = `<div class="recipe-search-item-title">${highlightTerms(recipe.title || 'Untitled', query)}</div>`;
+      if (!hitInTitle && contextSnippet) {
+        contentHtml += `<div class="recipe-search-item-context">${highlightTerms(contextSnippet, query)}</div>`;
+      }
       item.innerHTML = `
-        <div class="recipe-search-item-title">${highlightTerms(recipe.title || 'Untitled', query)}${matchLabel}</div>
-        <div class="recipe-search-item-ingredients">${escapeHtml(preview)}</div>
+        <div class="recipe-search-item-content">${contentHtml}</div>
+        <button class="recipe-search-bookmark-btn" aria-label="Bookmark recipe"><i class="bi bi-bookmark"></i></button>
       `;
-      item.addEventListener('click', () => {
-        // Navigate to recipe detail
+      // Click content area to open detail
+      item.querySelector('.recipe-search-item-content').addEventListener('click', () => {
         searchInput.value = '';
         resultsContainer.style.display = 'none';
         resultsContainer.innerHTML = '';
         if (suggestionsContainer) suggestionsContainer.style.display = '';
         recipeEngine.showRecipeDetail(recipe);
+      });
+      // Click bookmark icon to save to library
+      const bookmarkBtn = item.querySelector('.recipe-search-bookmark-btn');
+      // Check current status and set initial icon
+      (async () => {
+        const status = await window.app.getLibraryStatus(recipe.id);
+        if (status === 'bookmarked') {
+          bookmarkBtn.querySelector('i').className = 'bi bi-bookmark-fill';
+          bookmarkBtn.classList.add('active');
+        }
+      })();
+      bookmarkBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          const status = await window.app.getLibraryStatus(recipe.id);
+          if (status === 'bookmarked') {
+            await window.app.removeFromLibrary(recipe.id);
+            bookmarkBtn.querySelector('i').className = 'bi bi-bookmark';
+            bookmarkBtn.classList.remove('active');
+          } else {
+            await window.app.saveToLibrary(recipe.id, recipe.title || 'Untitled', 'bookmarked');
+            bookmarkBtn.querySelector('i').className = 'bi bi-bookmark-fill';
+            bookmarkBtn.classList.add('active');
+          }
+        } catch (err) {
+          console.error('Error toggling bookmark:', err);
+        }
       });
       resultsContainer.appendChild(item);
     }
@@ -825,7 +930,7 @@ function initRecipeSearch() {
     if (suggestionsContainer) suggestionsContainer.style.display = 'none';
 
     debounceTimer = setTimeout(async () => {
-      const results = await searchRecipesByTitle(query);
+      const results = await searchRecipes(query);
       renderSearchResults(results, query);
     }, RECIPE_SEARCH_DEBOUNCE);
   });
